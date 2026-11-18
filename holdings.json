@@ -1,0 +1,22 @@
+[
+  {
+    "id": "boc_1",
+    "bank": "中国银行",
+    "name": "中银理财-稳富固收增强",
+    "code": "Z7001024000001",
+    "type": "nav",
+    "shares": 50000.0,
+    "principal": 50000.0,
+    "initial_nav": 1.0
+  },
+  {
+    "id": "cmb_1",
+    "bank": "招商银行",
+    "name": "招银理财-朝朝宝",
+    "code": "Z7001621000001",
+    "type": "ten_thousand",
+    "shares": 30000.0,
+    "principal": 30000.0,
+    "initial_nav": 1.0
+  }
+]

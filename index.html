@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#f8fafc" />
+  <title>我的理财收益看板</title>
+  
+  <!-- Tailwind CSS & Chart.js -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .profit-red { color: #dc2626; }
+    .profit-green { color: #16a34a; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-12 selection:bg-rose-100 selection:text-rose-700">
+  
+  <!-- 页面容器 -->
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+    
+    <!-- 顶部状态栏与操作 -->
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">理财收益看板</h1>
+          <span id="syncBadge" class="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+            云端定时更新
+          </span>
+        </div>
+        <p id="syncTime" class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+          <span>🕒 最近同步：加载中...</span>
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="openAddModal()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1 px-3.5 py-2 bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          添加持仓
+        </button>
+        <button id="syncBtn" onclick="triggerManualSync()" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-1 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 active:bg-slate-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          立即刷新
+        </button>
+        <button onclick="openTokenModal()" title="云端设置" class="p-2 border border-slate-200 bg-white hover:bg-slate-100 rounded-lg text-slate-600 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- 资产汇总三大卡片 -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+      <!-- 总资产 -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div class="text-xs font-medium text-slate-500">总持仓市值 (元)</div>
+        <div id="totalAssets" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1 tracking-tight">--</div>
+        <div class="text-xs text-slate-400 mt-2 flex items-center justify-between">
+          <span>总投入本金</span>
+          <span id="totalPrincipal" class="font-medium text-slate-600">--</span>
+        </div>
+      </div>
+
+      <!-- 今日收益 -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div class="text-xs font-medium text-slate-500">最新单日收益 (元)</div>
+        <div id="dailyProfit" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight">--</div>
+        <div class="text-xs text-slate-400 mt-2 flex items-center justify-between">
+          <span>收益计入状态</span>
+          <span id="dailyStatus" class="font-medium text-slate-600">--</span>
+        </div>
+      </div>
+
+      <!-- 累计总收益 -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+        <div class="text-xs font-medium text-slate-500">累计总收益 (元)</div>
+        <div id="cumProfit" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight">--</div>
+        <div class="text-xs text-slate-400 mt-2 flex items-center justify-between">
+          <span>累计收益率</span>
+          <span id="totalYield" class="font-semibold text-rose-600">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 收益走势折线图 -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900">收益走势</h2>
+          <p class="text-xs text-slate-400">近 30~90 日累计收益表现</p>
+        </div>
+        <span class="text-xs text-slate-400 bg-slate-50 px-2 py-1 rounded">单位: 元</span>
+      </div>
+      <div class="h-56 w-full">
+        <canvas id="profitChart"></canvas>
+      </div>
+    </section>
+
+    <!-- 持仓产品列表 -->
+    <section>
+      <div class="flex items-center justify-between mb-3 px-1">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold text-slate-900">持仓明细</h2>
+          <span id="productCount" class="text-xs bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded font-medium">0</span>
+        </div>
+        <div class="flex gap-1 text-xs">
+          <button onclick="filterType('all')" id="tabAll" class="px-2.5 py-1 rounded-md font-medium bg-slate-900 text-white">全部</button>
+          <button onclick="filterType('nav')" id="tabNav" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-200">净值型</button>
+          <button onclick="filterType('ten_thousand')" id="tabTen" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-200">现金活钱</button>
+        </div>
+      </div>
+
+      <div id="productList" class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+        <!-- 动态渲染卡片 -->
+      </div>
+    </section>
+  </div>
+
+  <!-- 搜索/添加理财弹窗 -->
+  <div id="addModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-base font-bold text-slate-900">添加 / 配置理财产品</h3>
+        <button onclick="closeModal('addModal')" class="text-slate-400 hover:text-slate-600 p-1">✕</button>
+      </div>
+
+      <!-- 快速选择预设热门产品 -->
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-600 mb-1.5">快捷选择招行/中行热门产品：</label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
+          <button onclick="quickPick('招商银行', '招银理财-朝朝宝', 'Z7001621000001', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-red-600">招行</span> 朝朝宝 (活钱)
+          </button>
+          <button onclick="quickPick('中国银行', '中银理财-活钱宝', 'Z7001021000012', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-rose-800">中行</span> 活钱宝 (活钱)
+          </button>
+          <button onclick="quickPick('招商银行', '招银理财-招睿青葵', 'Z7001620000028', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-red-600">招行</span> 招睿青葵 (净值)
+          </button>
+          <button onclick="quickPick('中国银行', '中银理财-稳富固收增强', 'Z7001024000001', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-rose-800">中行</span> 稳富固收 (净值)
+          </button>
+          <button onclick="quickPick('招商银行', '招银理财-招睿日开月滚', 'Z7001622000105', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-red-600">招行</span> 日开月滚 (净值)
+          </button>
+          <button onclick="quickPick('中国银行', '中银理财-乐享天天', 'Z7001020000089', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
+            <span class="font-bold text-rose-800">中行</span> 乐享天天 (活钱)
+          </button>
+        </div>
+      </div>
+
+      <!-- 手动表单 -->
+      <div class="space-y-3 border-t border-slate-100 pt-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">所属银行</label>
+            <select id="fBank" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+              <option value="招商银行">招商银行</option>
+              <option value="中国银行">中国银行</option>
+              <option value="工商银行">工商银行</option>
+              <option value="建设银行">建设银行</option>
+              <option value="其他银行">其他银行</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">理财类型</label>
+            <select id="fType" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+              <option value="nav">净值型 (按单位净值核算)</option>
+              <option value="ten_thousand">现金管理 (按万份收益滚存)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs text-slate-500 mb-1">产品名称</label>
+          <input id="fName" type="text" placeholder="例如：招银理财-朝朝宝" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs" />
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-xs text-slate-500">产品登记编码 (Z7开头14位)</label>
+            <span class="text-[11px] text-slate-400">可在银行App理财详情页查看</span>
+          </div>
+          <input id="fCode" type="text" placeholder="例如：Z7001621000001" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs uppercase" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">持有份额 (份/元)</label>
+            <input id="fShares" type="number" step="0.01" placeholder="50000" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-500 mb-1">买入本金 (元)</label>
+            <input id="fPrincipal" type="number" step="0.01" placeholder="50000" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs" />
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-5">
+        <button onclick="exportHoldingsJson()" class="flex-1 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg">
+          导出 holdings.json
+        </button>
+        <button id="saveProductBtn" onclick="saveNewHolding()" class="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs rounded-lg shadow-sm">
+          保存并同步到云端
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 云端授权设置弹窗 -->
+  <div id="tokenModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-base font-bold text-slate-900">GitHub 授权配置</h3>
+        <button onclick="closeModal('tokenModal')" class="text-slate-400 hover:text-slate-600 p-1">✕</button>
+      </div>
+      
+      <p class="text-xs text-slate-500 mb-3 leading-relaxed">
+        如需在网页上点击“立即刷新”或通过网页直接增删持仓，需要配置 GitHub Token。该 Token <strong>仅保存在您的本地浏览器</strong>。
+      </p>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-500 mb-1">仓库地址</label>
+          <div class="grid grid-cols-2 gap-2">
+            <input id="cfgOwner" type="text" placeholder="GitHub 用户名" value="ZTY66306" class="px-3 py-1.5 border border-slate-200 rounded-lg" />
+            <input id="cfgRepo" type="text" placeholder="仓库名" value="my-wealth-board" class="px-3 py-1.5 border border-slate-200 rounded-lg" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-500 mb-1">GitHub Personal Access Token</label>
+          <input id="ghTokenInput" type="password" placeholder="ghp_xxx 或 github_pat_xxx" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg font-mono text-xs" />
+          <p class="text-[11px] text-slate-400 mt-1">需具备 contents:write 与 actions:write 权限。</p>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mt-5">
+        <button onclick="clearToken()" class="px-3 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs rounded-lg">
+          清除
+        </button>
+        <button onclick="saveToken()" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs rounded-lg">
+          保存配置
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 仓库基础配置 (默认配置，用户可在弹窗修改)
+    let CONFIG = {
+      owner: localStorage.getItem('cfg_owner') || 'ZTY66306',
+      repo: localStorage.getItem('cfg_repo') || 'my-wealth-board',
+      branch: 'main'
+    };
+
+    let allProducts = [];
+    let currentFilter = 'all';
+    let chartInstance = null;
+
+    function formatMoney(num) {
+      return Number(num || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatSign(num) {
+      if (num > 0) return `+${formatMoney(num)}`;
+      return formatMoney(num);
+    }
+
+    function getBankBadge(bank) {
+      if (bank.includes('招商') || bank.includes('招银')) {
+        return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">招商银行</span>';
+      }
+      if (bank.includes('中国') || bank.includes('中银')) {
+        return '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200">中国银行</span>';
+      }
+      return `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700">${bank}</span>`;
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch(`./data.json?t=${Date.now()}`);
+        if (!res.ok) throw new Error('data.json 尚未生成');
+        const data = await res.json();
+        renderUI(data);
+      } catch (err) {
+        document.getElementById('syncTime').innerHTML = `<span class="text-amber-600">⚠️ 等待 GitHub Actions 首次运行生成 data.json</span>`;
+      }
+    }
+
+    function renderUI(data) {
+      const summary = data.summary || {};
+      allProducts = data.products || [];
+
+      // 顶部时间
+      document.getElementById('syncTime').innerHTML = `<span>🕒 最近同步：${data.updated_at || '--'}</span>`;
+
+      // 汇总金额
+      document.getElementById('totalAssets').textContent = `¥ ${formatMoney(summary.total_assets)}`;
+      
+      const totalPrincipal = allProducts.reduce((sum, p) => sum + (p.principal || 0), 0);
+      document.getElementById('totalPrincipal').textContent = `¥ ${formatMoney(totalPrincipal)}`;
+
+      const dpEl = document.getElementById('dailyProfit');
+      dpEl.textContent = formatSign(summary.daily_profit);
+      dpEl.className = `text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight ${summary.daily_profit >= 0 ? 'profit-red' : 'profit-green'}`;
+      document.getElementById('dailyStatus').textContent = summary.daily_profit >= 0 ? '正收益' : '微亏';
+
+      const cpEl = document.getElementById('cumProfit');
+      cpEl.textContent = formatSign(summary.cumulative_profit);
+      cpEl.className = `text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight ${summary.cumulative_profit >= 0 ? 'profit-red' : 'profit-green'}`;
+
+      const yieldRate = totalPrincipal > 0 ? (summary.cumulative_profit / totalPrincipal * 100).toFixed(2) : '0.00';
+      document.getElementById('totalYield').textContent = `${yieldRate >= 0 ? '+' : ''}${yieldRate}%`;
+      document.getElementById('totalYield').className = `font-semibold ${yieldRate >= 0 ? 'profit-red' : 'profit-green'}`;
+
+      renderProducts();
+      renderChart(data.history || []);
+    }
+
+    function filterType(type) {
+      currentFilter = type;
+      ['all', 'nav', 'ten_thousand'].forEach(t => {
+        const btn = document.getElementById(t === 'all' ? 'tabAll' : t === 'nav' ? 'tabNav' : 'tabTen');
+        if (t === type) {
+          btn.className = 'px-2.5 py-1 rounded-md font-medium bg-slate-900 text-white';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-600 hover:bg-slate-200';
+        }
+      });
+      renderProducts();
+    }
+
+    function renderProducts() {
+      const filtered = currentFilter === 'all' ? allProducts : allProducts.filter(p => p.type === currentFilter);
+      document.getElementById('productCount').textContent = filtered.length;
+
+      const listEl = document.getElementById('productList');
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="col-span-2 text-center py-8 text-slate-400 text-xs">暂无该类型持仓产品</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(p => {
+        const isNav = p.type === 'nav';
+        const metricLabel = isNav ? `最新净值: ${p.current_nav || '--'}` : `万份收益: ${p.ten_k_return || '--'}元`;
+        const subMetric = isNav && p.yesterday_nav ? `(昨日 ${p.yesterday_nav})` : '';
+        const itemYield = p.principal > 0 ? (p.cumulative_profit / p.principal * 100).toFixed(2) : '0.00';
+
+        return `
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_6px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between gap-2">
+                ${getBankBadge(p.bank)}
+                <div class="flex items-center gap-1.5 text-xs text-slate-400">
+                  <span class="font-mono text-[11px]">${p.code}</span>
+                  <button onclick="deleteHolding('${p.id}')" title="删除" class="text-slate-300 hover:text-rose-600 transition ml-1">✕</button>
+                </div>
+              </div>
+              <h3 class="font-bold text-slate-900 text-sm sm:text-base mt-2 leading-snug">${p.name}</h3>
+              <p class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                <span class="font-medium">${metricLabel}</span>
+                <span class="text-slate-400 text-[11px]">${subMetric}</span>
+              </p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100 text-xs">
+              <div>
+                <div class="text-slate-400 text-[11px]">当前市值</div>
+                <div class="font-bold text-slate-900 mt-0.5">¥${formatMoney(p.market_value)}</div>
+              </div>
+              <div>
+                <div class="text-slate-400 text-[11px]">最新日收益</div>
+                <div class="font-bold mt-0.5 ${p.daily_profit >= 0 ? 'profit-red' : 'profit-green'}">
+                  ${formatSign(p.daily_profit)}
+                </div>
+              </div>
+              <div>
+                <div class="text-slate-400 text-[11px]">累计总收益</div>
+                <div class="font-bold mt-0.5 ${p.cumulative_profit >= 0 ? 'profit-red' : 'profit-green'}">
+                  ${formatSign(p.cumulative_profit)}
+                  <span class="text-[10px] block font-normal text-slate-400">(${itemYield}%)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderChart(history) {
+      const ctx = document.getElementById('profitChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      const labels = history.map(h => (h.date ? h.date.slice(5) : ''));
+      const values = history.map(h => h.cumulative_profit || 0);
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '累计收益 (元)',
+            data: values,
+            borderColor: '#e11d48',
+            backgroundColor: 'rgba(225, 29, 72, 0.08)',
+            borderWidth: 2,
+            pointRadius: labels.length > 20 ? 0 : 3,
+            pointHoverRadius: 5,
+            fill: true,
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` 累计收益: ¥${formatMoney(ctx.raw)} 元`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function quickPick(bank, name, code, type) {
+      document.getElementById('fBank').value = bank;
+      document.getElementById('fName').value = name;
+      document.getElementById('fCode').value = code;
+      document.getElementById('fType').value = type;
+    }
+
+    function openAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    function openTokenModal() {
+      document.getElementById('cfgOwner').value = CONFIG.owner;
+      document.getElementById('cfgRepo').value = CONFIG.repo;
+      document.getElementById('ghTokenInput').value = localStorage.getItem('gh_sync_token') || '';
+      document.getElementById('tokenModal').classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function saveToken() {
+      const o = document.getElementById('cfgOwner').value.trim();
+      const r = document.getElementById('cfgRepo').value.trim();
+      const t = document.getElementById('ghTokenInput').value.trim();
+
+      if (o) localStorage.setItem('cfg_owner', o);
+      if (r) localStorage.setItem('cfg_repo', r);
+      if (t) localStorage.setItem('gh_sync_token', t);
+
+      CONFIG.owner = o || CONFIG.owner;
+      CONFIG.repo = r || CONFIG.repo;
+      closeModal('tokenModal');
+      alert('GitHub 配置保存成功！');
+    }
+
+    function clearToken() {
+      localStorage.removeItem('gh_sync_token');
+      document.getElementById('ghTokenInput').value = '';
+      alert('已清除本地 Token。');
+    }
+
+    // 导出 holdings.json 让用户可以零 Token 手动修改
+    async function exportHoldingsJson() {
+      const bank = document.getElementById('fBank').value;
+      const type = document.getElementById('fType').value;
+      const name = document.getElementById('fName').value.trim();
+      const code = document.getElementById('fCode').value.trim().toUpperCase();
+      const shares = parseFloat(document.getElementById('fShares').value) || 0;
+      const principal = parseFloat(document.getElementById('fPrincipal').value) || 0;
+
+      let list = allProducts.map(p => ({
+        id: p.id,
+        bank: p.bank,
+        name: p.name,
+        code: p.code,
+        type: p.type,
+        shares: p.shares,
+        principal: p.principal
+      }));
+
+      if (name && code) {
+        list.push({ id: `prod_${Date.now()}`, bank, name, code, type, shares, principal });
+      }
+
+      const jsonStr = JSON.stringify(list, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'holdings.json';
+      a.click();
+    }
+
+    async function triggerManualSync() {
+      const token = localStorage.getItem('gh_sync_token');
+      if (!token) {
+        openTokenModal();
+        return;
+      }
+
+      const btn = document.getElementById('syncBtn');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="animate-spin mr-1">↻</span> 调度中...`;
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/actions/workflows/sync.yml/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ref: CONFIG.branch })
+        });
+
+        if (res.status === 204) {
+          btn.textContent = '抓取中 (约20秒)...';
+          setTimeout(async () => {
+            await loadDashboard();
+            btn.disabled = false;
+            btn.innerHTML = `立即刷新`;
+            alert('云端净值同步完成！已刷新数据。');
+          }, 20000);
+        } else {
+          throw new Error(`触发失败 (HTTP ${res.status})，请检查 Token 权限 (需要 actions:write)`);
+        }
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+        btn.innerHTML = `立即刷新`;
+      }
+    }
+
+    async function updateHoldingsOnGitHub(mutatorFn) {
+      const token = localStorage.getItem('gh_sync_token');
+      if (!token) {
+        openTokenModal();
+        return false;
+      }
+
+      const apiUrl = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/contents/holdings.json`;
+      const headers = {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const getRes = await fetch(`${apiUrl}?ref=${CONFIG.branch}`, { headers });
+      if (!getRes.ok) throw new Error('读取仓库 holdings.json 失败，请检查 Token 或仓库地址');
+      const fileData = await getRes.json();
+      
+      const currentContent = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ''))));
+      const currentJson = JSON.parse(currentContent);
+      const nextJson = mutatorFn(currentJson);
+
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(nextJson, null, 2))));
+      const putRes = await fetch(apiUrl, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          message: 'chore: update holdings via dashboard [skip ci]',
+          content: encoded,
+          sha: fileData.sha,
+          branch: CONFIG.branch
+        })
+      });
+
+      if (!putRes.ok) throw new Error('写入 holdings.json 失败，请确认 Token 具备 contents:write 权限');
+      return true;
+    }
+
+    async function saveNewHolding() {
+      const bank = document.getElementById('fBank').value;
+      const type = document.getElementById('fType').value;
+      const name = document.getElementById('fName').value.trim();
+      const code = document.getElementById('fCode').value.trim().toUpperCase();
+      const shares = parseFloat(document.getElementById('fShares').value);
+      const principal = parseFloat(document.getElementById('fPrincipal').value);
+
+      if (!name || !code || isNaN(shares) || isNaN(principal)) {
+        return alert('请完整填写名称、登记编码、份额和本金！');
+      }
+
+      const btn = document.getElementById('saveProductBtn');
+      btn.disabled = true;
+      btn.textContent = '正在提交 GitHub...';
+
+      try {
+        const ok = await updateHoldingsOnGitHub(list => {
+          list.push({ id: `prod_${Date.now()}`, bank, name, code, type, shares, principal, initial_nav: 1.0 });
+          return list;
+        });
+
+        if (ok) {
+          closeModal('addModal');
+          alert('持仓已写入 GitHub！云端已自动开始算账，约 20 秒后自动刷新。');
+          setTimeout(loadDashboard, 20000);
+        }
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '保存并同步到云端';
+      }
+    }
+
+    async function deleteHolding(id) {
+      if (!confirm('确定删除该理财产品吗？')) return;
+      try {
+        const ok = await updateHoldingsOnGitHub(list => list.filter(item => item.id !== id));
+        if (ok) {
+          alert('已删除，正在触发重新计算...');
+          setTimeout(loadDashboard, 15000);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadDashboard);
+  </script>
+</body>
+</html>

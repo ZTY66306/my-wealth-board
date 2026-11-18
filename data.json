@@ -1,0 +1,51 @@
+{
+  "updated_at": "2026-11-18 21:26:02",
+  "summary": {
+    "total_assets": 80000.0,
+    "daily_profit": 0.0,
+    "cumulative_profit": 0.0
+  },
+  "products": [
+    {
+      "id": "boc_1",
+      "bank": "中国银行",
+      "name": "中银理财-稳富固收增强",
+      "code": "Z7001024000001",
+      "type": "nav",
+      "shares": 50000.0,
+      "principal": 50000.0,
+      "initial_nav": 1.0,
+      "current_nav": 1.0,
+      "yesterday_nav": 1.0,
+      "market_value": 50000.0,
+      "daily_profit": 0.0,
+      "cumulative_profit": 0.0,
+      "sync_status": "cached",
+      "last_sync_date": "2026-11-18"
+    },
+    {
+      "id": "cmb_1",
+      "bank": "招商银行",
+      "name": "招银理财-朝朝宝",
+      "code": "Z7001621000001",
+      "type": "ten_thousand",
+      "shares": 30000.0,
+      "principal": 30000.0,
+      "initial_nav": 1.0,
+      "ten_k_return": 0.0,
+      "market_value": 30000.0,
+      "daily_profit": 0.0,
+      "cumulative_profit": 0.0,
+      "sync_status": "cached",
+      "last_sync_date": "2026-11-18"
+    }
+  ],
+  "history": [
+    {
+      "date": "2026-11-18",
+      "total_assets": 80000.0,
+      "daily_profit": 0.0,
+      "cumulative_profit": 0.0
+    }
+  ]
+}
