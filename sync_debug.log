@@ -1,0 +1,42 @@
+[16:41:08] 开始从中国银行官网拉取实时公开净值...
+[16:41:11] GET https://www.bankofchina.com/fimarkets/ -> 200 (len=46453)
+[16:41:11]   发现入口: [代销理财产品] -> https://www.bankofchina.com/fimarkets/fp6/
+[16:41:11]   发现入口: [理财产品净值] -> https://www.bankofchina.com/fimarkets/cs8/lcjz/
+[16:41:11]   发现入口: [理财产品净值] -> https://www.bankofchina.com/fimarkets/bocwm/fp82/
+[16:41:11]   发现入口: [代销基金净值] -> https://www.bankofchina.com/sourcedb/nv_fund/
+[16:41:11]   发现入口: [券商产品净值] -> https://www.bankofchina.com/sourcedb/nv_broker/
+[16:41:11]   发现入口: [代销基金产品净值] -> https://www.bankofchina.com/sourcedb/srfd2_2024/
+[16:41:11]   发现入口: [代销资管产品净值] -> https://www.bankofchina.com/sourcedb/srfd3_2024/
+[16:41:11]   发现入口: [代销理财产品净值] -> https://www.bankofchina.com/sourcedb/srfd6_2024/
+[16:41:11]   发现入口: [自营理财产品净值] -> https://www.bankofchina.com/fimarkets/cs8/lcjz/
+[16:41:11] 检查页面 https://www.bankofchina.com/fimarkets/fp6/ -> 200 (len=22778)
+[16:41:11]   发现表单: POST https://srh.bankofchina.com/search/sitesearch/index.jsp inputs=['searchColumn', 'sword']
+[16:41:11]   脚本发现链接: https://www.bankofchina.com/sourcedb/operations2021/
+[16:41:11]   脚本发现链接: https://srh.bankofchina.com/search/sitesearch/index.jsp
+[16:41:11]   脚本发现链接: https://srh.bankofchina.com/search/
+[16:41:14] 检查页面 https://www.bankofchina.com/sourcedb/nv_fund/ -> 200 (len=23283)
+[16:41:14]   发现表单: POST https://srh.bankofchina.com/search/sitesearch/index.jsp inputs=['searchColumn', 'sword']
+[16:41:15] 检查页面 https://www.bankofchina.com/sourcedb/srfd2_2024/ -> 200 (len=17915)
+[16:41:15] 检查页面 https://www.bankofchina.com/sourcedb/srfd3_2024/ -> 200 (len=17760)
+[16:41:16] 检查页面 https://www.bankofchina.com/sourcedb/srfd6_2024/ -> 200 (len=18269)
+[16:41:16] 检查页面 https://www.bankofchina.com/fimarkets/cs8/lcjz/ -> 200 (len=50334)
+[16:41:16]   发现表单: POST https://srh.bankofchina.com/search/sitesearch/index.jsp inputs=['searchColumn', 'sword']
+[16:41:20]   [表单未命中] 招睿添金7天持有期11号 (120030D) -> status=200, len=6956
+[16:41:21]   [表单未命中] 招睿添金30天持有期23号 (120033D) -> status=200, len=6956
+[16:41:21]   [表单未命中] 招睿颐养丰润特别款90天 (122511D) -> status=200, len=6956
+[16:41:21]   [表单未命中] 招睿丰和日开29号 (133013D) -> status=200, len=6956
+[16:41:21]   [表单未命中] 双周鑫最短持有期85号A (双周鑫最短持有期85号A) -> status=200, len=7154
+[16:41:22]   [表单未命中] 惠农·鸿运最短持有14天3号 (2501BS003A) -> status=200, len=6974
+[16:41:22]   [表单未命中] 招睿添金7天持有期11号 (120030D) -> status=200, len=6956
+[16:41:22]   [表单未命中] 招睿添金30天持有期23号 (120033D) -> status=200, len=6956
+[16:41:22]   [表单未命中] 招睿颐养丰润特别款90天 (122511D) -> status=200, len=6956
+[16:41:23]   [表单未命中] 招睿丰和日开29号 (133013D) -> status=200, len=6956
+[16:41:23]   [表单未命中] 双周鑫最短持有期85号A (双周鑫最短持有期85号A) -> status=200, len=7154
+[16:41:23]   [表单未命中] 惠农·鸿运最短持有14天3号 (2501BS003A) -> status=200, len=6974
+[16:41:23]   [表单未命中] 招睿添金7天持有期11号 (120030D) -> status=200, len=6956
+[16:41:24]   [表单未命中] 招睿添金30天持有期23号 (120033D) -> status=200, len=6956
+[16:41:24]   [表单未命中] 招睿颐养丰润特别款90天 (122511D) -> status=200, len=6956
+[16:41:24]   [表单未命中] 招睿丰和日开29号 (133013D) -> status=200, len=6956
+[16:41:24]   [表单未命中] 双周鑫最短持有期85号A (双周鑫最短持有期85号A) -> status=200, len=7154
+[16:41:25]   [表单未命中] 惠农·鸿运最短持有14天3号 (2501BS003A) -> status=200, len=6974
+[16:41:25] 拉取结束: 共 6 只持仓，实时命中 0 只
