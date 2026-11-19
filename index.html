@@ -367,7 +367,9 @@
 
       listEl.innerHTML = filtered.map(p => {
         const isNav = p.type === 'nav';
-        const metricLabel = isNav ? `最新净值: ${p.current_nav || '1.0000'}` : `万份收益: ${p.ten_k_return || '0.00'}元`;
+        const navDateTag = p.nav_date ? `<span class="text-[11px] text-slate-400 ml-1">(${p.nav_date})</span>` : '';
+        const liveBadge = p.sync_status === 'live' ? `<span class="inline-block ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">官网实时</span>` : '';
+        const metricLabel = isNav ? `最新净值: ${p.current_nav ? Number(p.current_nav).toFixed(4) : '1.0000'}${navDateTag}${liveBadge}` : `万份收益: ${p.ten_k_return || '0.00'}元${navDateTag}${liveBadge}`;
         const itemYield = p.principal > 0 ? (p.cumulative_profit / p.principal * 100).toFixed(2) : '0.00';
 
         return `
