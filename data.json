@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-11-19 16:41:08",
+  "updated_at": "2026-11-19 16:44:05",
   "summary": {
-    "total_assets": 140400.0,
-    "daily_profit": 25.66,
-    "cumulative_profit": 729.82
+    "total_assets": 140477.88,
+    "daily_profit": 25.62,
+    "cumulative_profit": 807.7
   },
   "products": [
     {
@@ -15,31 +15,31 @@
       "type": "nav",
       "shares": 19745.29,
       "principal": 19938.61,
-      "market_value": 20000.0,
+      "market_value": 20001.98,
       "daily_profit": 1.98,
-      "cumulative_profit": 61.39,
-      "current_nav": 1.0,
-      "yesterday_nav": 0.9999,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "cumulative_profit": 63.37,
+      "current_nav": 1.013,
+      "yesterday_nav": 1.013,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     },
     {
       "id": "cmb_tj_30d_23",
       "bank": "招银理财",
       "name": "招睿添金30天持有期23号",
-      "code": "120033D",
+      "code": "120137D",
       "reg_code": "",
       "type": "nav",
       "shares": 19832.26,
       "principal": 19986.37,
-      "market_value": 20100.0,
+      "market_value": 20008.77,
       "daily_profit": 3.99,
-      "cumulative_profit": 113.63,
-      "current_nav": 1.005,
-      "yesterday_nav": 1.0048,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "cumulative_profit": 22.4,
+      "current_nav": 1.0089,
+      "yesterday_nav": 1.0089,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     },
     {
@@ -51,13 +51,13 @@
       "type": "nav",
       "shares": 48940.12,
       "principal": 49926.29,
-      "market_value": 50100.0,
-      "daily_profit": 14.72,
-      "cumulative_profit": 173.71,
-      "current_nav": 1.002,
-      "yesterday_nav": 1.0017,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "market_value": 50041.27,
+      "daily_profit": 14.66,
+      "cumulative_profit": 114.98,
+      "current_nav": 1.0225,
+      "yesterday_nav": 1.0225,
+      "nav_date": "2026-11-17",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     },
     {
@@ -69,31 +69,31 @@
       "type": "nav",
       "shares": 19858.43,
       "principal": 19945.13,
-      "market_value": 20200.0,
+      "market_value": 20199.99,
       "daily_profit": 1.99,
-      "cumulative_profit": 254.87,
-      "current_nav": 1.01,
-      "yesterday_nav": 1.0099,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "cumulative_profit": 254.86,
+      "current_nav": 1.0172,
+      "yesterday_nav": 1.0172,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     },
     {
       "id": "spdb_szx_14d_85a",
       "bank": "浦银理财",
       "name": "双周鑫最短持有期85号A",
-      "code": "双周鑫最短持有期85号A",
+      "code": "2501260100",
       "reg_code": "",
       "type": "nav",
       "shares": 19950.55,
       "principal": 19950.55,
-      "market_value": 20000.0,
-      "daily_profit": 1.98,
-      "cumulative_profit": 49.45,
-      "current_nav": 1.0,
-      "yesterday_nav": 0.9999,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "market_value": 20225.87,
+      "daily_profit": 2.0,
+      "cumulative_profit": 275.32,
+      "current_nav": 1.0138,
+      "yesterday_nav": 1.0138,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     },
     {
@@ -108,10 +108,10 @@
       "market_value": 10000.0,
       "daily_profit": 1.0,
       "cumulative_profit": 76.77,
-      "current_nav": 1.0,
-      "yesterday_nav": 0.9999,
-      "nav_date": "2026-11-19",
-      "sync_status": "unchanged",
+      "current_nav": 1.0108,
+      "yesterday_nav": 1.0108,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-19"
     }
   ],
@@ -136,9 +136,9 @@
     },
     {
       "date": "2026-11-19",
-      "total_assets": 140400.0,
-      "daily_profit": 25.66,
-      "cumulative_profit": 729.82
+      "total_assets": 140477.88,
+      "daily_profit": 25.62,
+      "cumulative_profit": 807.7
     }
   ]
 }
