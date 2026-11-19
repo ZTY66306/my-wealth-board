@@ -10,8 +10,10 @@
 
 import json
 import os
+import random
 import re
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 
@@ -156,11 +158,12 @@ def match_holding(item, holding):
     return False
 
 
-def fetch_all_boc_agency_navs(holdings):
+def fetch_all_boc_agency_navs(holdings, old_map=None):
     """
-    并发抓取中国银行代销理财产品净值公示页，匹配全部持仓
+    温和限流 + 页码记忆优先 + 失败重试：抓取中国银行代销理财产品净值公示页
     """
     matched = {}
+    old_map = old_map or {}
     session = requests.Session()
     session.headers.update(HEADERS)
 
@@ -179,47 +182,71 @@ def fetch_all_boc_agency_navs(holdings):
     total_pages = detect_total_pages(r0.text)
     log(f"表头: {headers}")
     log(f"第1页解析到 {len(first_items)} 条记录，识别总页数={total_pages}")
-    if first_items:
-        log(f"样例记录: {first_items[0]}")
 
     for item in first_items:
         for h in holdings:
             if h["id"] not in matched and match_holding(item, h):
+                item["found_page"] = 0
                 matched[h["id"]] = item
-                log(f"  [第1页命中] {h['name']} -> 代码={item['code']} 名称={item['name']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+                log(f"  [第1页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
 
     if len(matched) == len(holdings) or total_pages <= 1:
         return matched
 
-    # 最多扫描前 300 页，使用线程池并发提速，全部命中即提前停止
     max_pages = min(total_pages, 300)
-    log(f"开始并发扫描剩余分页 (index_1.html ~ index_{max_pages - 1}.html)...")
+
+    # 优先扫描上次命中的页码及其前后 ±2 页，大幅减少总请求数
+    priority_pages = []
+    seen = {0}
+    for h in holdings:
+        last_p = old_map.get(h["id"], {}).get("last_page")
+        if isinstance(last_p, int) and 1 <= last_p < max_pages:
+            for delta in (0, -1, 1, -2, 2):
+                cand = last_p + delta
+                if 1 <= cand < max_pages and cand not in seen:
+                    seen.add(cand)
+                    priority_pages.append(cand)
+
+    remaining_pages = [p for p in range(1, max_pages) if p not in seen]
+    scan_order = priority_pages + remaining_pages
+    log(f"防限流温和模式(4线程+随机间隔+重试)：优先页={len(priority_pages)}页，总待扫={len(scan_order)}页")
 
     def fetch_page(page_idx):
         url = f"{BOC_AGENCY_BASE}index_{page_idx}.html"
-        try:
-            resp = session.get(url, timeout=12)
-            resp.encoding = "utf-8"
-            if resp.status_code == 200:
-                _, items = parse_boc_page_rows(resp.text)
-                return page_idx, items
-        except Exception:
-            pass
+        for attempt in range(1, 3):
+            time.sleep(random.uniform(0.15, 0.35))
+            try:
+                resp = session.get(url, timeout=12)
+                resp.encoding = "utf-8"
+                if resp.status_code == 200:
+                    _, items = parse_boc_page_rows(resp.text)
+                    return page_idx, items
+                if resp.status_code in (429, 500, 502, 503, 504):
+                    time.sleep(1.5 * attempt)
+                    continue
+            except Exception:
+                time.sleep(1.5 * attempt)
         return page_idx, []
 
-    with ThreadPoolExecutor(max_workers=16) as pool:
-        futures = [pool.submit(fetch_page, idx) for idx in range(1, max_pages)]
-        for fut in as_completed(futures):
-            page_idx, items = fut.result()
-            for item in items:
-                for h in holdings:
-                    if h["id"] not in matched and match_holding(item, h):
-                        matched[h["id"]] = item
-                        log(f"  [第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 名称={item['name']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+    batch_size = 8
+    fetched_count = 1
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for i in range(0, len(scan_order), batch_size):
             if len(matched) == len(holdings):
-                log("全部持仓已命中，提前结束扫描！")
-                for f in futures:
-                    f.cancel()
+                break
+            batch = scan_order[i:i + batch_size]
+            futures = [pool.submit(fetch_page, idx) for idx in batch]
+            for fut in as_completed(futures):
+                page_idx, items = fut.result()
+                fetched_count += 1
+                for item in items:
+                    for h in holdings:
+                        if h["id"] not in matched and match_holding(item, h):
+                            item["found_page"] = page_idx
+                            matched[h["id"]] = item
+                            log(f"  [第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+            if len(matched) == len(holdings):
+                log(f"全部持仓已命中（本次仅请求 {fetched_count} 页），立即停止扫描！")
                 break
 
     return matched
@@ -282,7 +309,7 @@ def main():
     old_map = {p["id"]: p for p in old_data.get("products", [])}
 
     log("开始抓取中国银行官网《代销理财产品净值》...")
-    live_map = fetch_all_boc_agency_navs(holdings)
+    live_map = fetch_all_boc_agency_navs(holdings, old_map)
     log(f"拉取完成: 共 {len(holdings)} 只持仓，实时命中 {len(live_map)} 只")
 
     updated_products = []
@@ -347,6 +374,7 @@ def main():
             "nav_date": nav_date,
             "sync_status": status,
             "last_sync_date": TODAY_STR,
+            "last_page": live.get("found_page") if live is not None else old_p.get("last_page"),
         }
 
         total_assets += mv
