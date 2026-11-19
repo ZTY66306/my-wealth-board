@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-19 18:33:44",
+  "updated_at": "2026-11-19 20:21:16",
   "summary": {
     "total_assets": 140401.98,
     "daily_profit": 25.62,
@@ -22,7 +22,8 @@
       "yesterday_nav": 1.013,
       "nav_date": "2026-11-18",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 18
     },
     {
       "id": "cmb_tj_30d_23",
@@ -40,7 +41,8 @@
       "yesterday_nav": 1.0089,
       "nav_date": "2026-11-18",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 22
     },
     {
       "id": "cmb_yy_90d",
@@ -58,7 +60,8 @@
       "yesterday_nav": 1.0225,
       "nav_date": "2026-11-17",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 27
     },
     {
       "id": "cmb_fh_daily_29",
@@ -76,7 +79,8 @@
       "yesterday_nav": 1.0172,
       "nav_date": "2026-11-18",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 15
     },
     {
       "id": "spdb_szx_14d_85a",
@@ -94,7 +98,8 @@
       "yesterday_nav": 1.0138,
       "nav_date": "2026-11-18",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 11
     },
     {
       "id": "psbc_hn_14d_3",
@@ -112,7 +117,8 @@
       "yesterday_nav": 1.0108,
       "nav_date": "2026-11-18",
       "sync_status": "live",
-      "last_sync_date": "2026-11-19"
+      "last_sync_date": "2026-11-19",
+      "last_page": 14
     }
   ],
   "history": [
