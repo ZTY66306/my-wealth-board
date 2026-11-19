@@ -254,12 +254,24 @@
       return formatMoney(num);
     }
 
-    function getBankBadge(bank) {
-      if (bank.includes('招商') || bank.includes('招银')) {
-        return '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">招商银行</span>';
+        function getBankBadge(bank) {
+      if (bank.includes("招商") || bank.includes("招银")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">招银理财</span>`;
       }
-      if (bank.includes('中国') || bank.includes('中银')) {
-        return '<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">中国银行</span>';
+      if (bank.includes("浦发") || bank.includes("浦银")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">浦银理财</span>`;
+      }
+      if (bank.includes("中邮") || bank.includes("邮储")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">中邮理财</span>`;
+      }
+      if (bank.includes("中国") || bank.includes("中银")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">中银理财</span>`;
+      }
+      if (bank.includes("工银") || bank.includes("工商")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-800 border border-red-200">工银理财</span>`;
+      }
+      if (bank.includes("建信") || bank.includes("建设")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">建信理财</span>`;
       }
       return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700">${bank}</span>`;
     }

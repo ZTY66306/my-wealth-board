@@ -1,22 +1,68 @@
 [
   {
-    "id": "boc_1",
-    "bank": "中国银行",
-    "name": "中银理财-稳富固收增强",
-    "code": "Z7001024000001",
+    "id": "cmb_tj_7d_11",
+    "bank": "招银理财",
+    "name": "招睿添金7天持有期11号",
+    "code": "Z7001623000711",
     "type": "nav",
-    "shares": 50000.0,
-    "principal": 50000.0,
+    "shares": 20000.0,
+    "principal": 19938.61,
+    "daily_rate": 1.98,
     "initial_nav": 1.0
   },
   {
-    "id": "cmb_1",
-    "bank": "招商银行",
-    "name": "招银理财-朝朝宝",
-    "code": "Z7001621000001",
-    "type": "ten_thousand",
-    "shares": 30000.0,
-    "principal": 30000.0,
+    "id": "cmb_tj_30d_23",
+    "bank": "招银理财",
+    "name": "招睿添金30天持有期23号",
+    "code": "Z7001623000723",
+    "type": "nav",
+    "shares": 20000.0,
+    "principal": 19986.37,
+    "daily_rate": 3.99,
+    "initial_nav": 1.0
+  },
+  {
+    "id": "cmb_yy_90d",
+    "bank": "招银理财",
+    "name": "招睿颐养丰润特别款90天（优享）",
+    "code": "Z7001623000790",
+    "type": "nav",
+    "shares": 50000.0,
+    "principal": 49926.29,
+    "daily_rate": 14.72,
+    "initial_nav": 1.0
+  },
+  {
+    "id": "cmb_fh_daily_29",
+    "bank": "招银理财",
+    "name": "招睿丰和日开29号",
+    "code": "Z7001622000229",
+    "type": "nav",
+    "shares": 20000.0,
+    "principal": 19945.13,
+    "daily_rate": 1.99,
+    "initial_nav": 1.0
+  },
+  {
+    "id": "spdb_szx_14d_85a",
+    "bank": "浦银理财",
+    "name": "双周鑫最短持有期85号A",
+    "code": "Z7002223000885",
+    "type": "nav",
+    "shares": 20000.0,
+    "principal": 19950.55,
+    "daily_rate": 1.98,
+    "initial_nav": 1.0
+  },
+  {
+    "id": "psbc_hn_14d_3",
+    "bank": "中邮理财",
+    "name": "惠农·鸿运最短持有14天3号",
+    "code": "Z7001923000143",
+    "type": "nav",
+    "shares": 10000.0,
+    "principal": 9923.23,
+    "daily_rate": 1.00,
     "initial_nav": 1.0
   }
 ]

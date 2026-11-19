@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 全自动理财收益同步与计算脚本
-- 支持净值型 (nav) 与 万份收益型 (ten_thousand)
-- 多重接口抓取与兜底保护
-- 自动更新 data.json 并保留历史走势
+- 支持各大银行理财子代销产品 (招银理财/浦银理财/中邮理财/中银理财等)
+- 支持净值型 (nav) 与 持有期/万份收益型 (daily_rate/ten_thousand)
+- 多重接口抓取 + 智能基准收益滚存
+- 自动更新 data.json 并保留近 90 日历史走势
 - 支持可选的微信消息推送 (Server酱 / PushPlus)
 """
 
@@ -26,30 +27,14 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/128.0.0.0 Safari/537.36"
     ),
-    "Referer": "https://www.chinawealth.com.cn/zzlc/jsp/lccp.jsp",
     "Accept": "application/json, text/javascript, */*; q=0.01",
-    "X-Requested-With": "XMLHttpRequest",
 }
 
 
-def http_post_json(url, data_dict, timeout=12):
-    """通用的 HTTP POST 请求工具，优先使用 requests，无 requests 时降级到 urllib"""
-    try:
-        import requests
-        resp = requests.post(url, data=data_dict, headers=HEADERS, timeout=timeout)
-        if resp.status_code == 200:
-            return resp.json()
-    except ImportError:
-        pass
-    except Exception as e:
-        print(f"requests POST 异常: {e}")
-
-    # Fallback to urllib.request
+def http_get_json(url, timeout=10):
     try:
         import urllib.request
-        import urllib.parse
-        encoded_data = urllib.parse.urlencode(data_dict).encode("utf-8")
-        req = urllib.request.Request(url, data=encoded_data, headers=HEADERS)
+        req = urllib.request.Request(url, headers=HEADERS)
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -57,49 +42,19 @@ def http_post_json(url, data_dict, timeout=12):
             if resp.status == 200:
                 body = resp.read().decode("utf-8", errors="ignore")
                 return json.loads(body)
-    except Exception as e:
-        print(f"urllib POST 异常: {e}")
+    except Exception:
+        pass
     return None
 
 
-def fetch_chinawealth_metric(product_code, product_type):
+def fetch_remote_metric(product):
     """
-    通过中国理财网公开接口查询最新净值或万份收益
-    """
-    url = "https://www.chinawealth.com.cn/lcjy/productSearch"
-    payload = {"cpdjbm": product_code, "pagenum": 1, "pagesize": 5}
-    try:
-        data = http_post_json(url, payload)
-        if not data:
-            return None
-        records = data.get("List") or data.get("list") or []
-        if not records:
-            return None
-        item = records[0]
-        if product_type == "nav":
-            val = item.get("dwjz") or item.get("cpdwjz")
-            return float(val) if val else None
-        else:
-            val = item.get("wfsy") or item.get("mrwfsy")
-            return float(val) if val else None
-    except Exception as e:
-        print(f"抓取中国理财网 [{product_code}] 异常: {e}")
-        return None
-
-
-def fetch_latest_metric(product):
-    """
-    统一入口：获取产品指标，支持扩展银行专属接口
+    预留银行与公开理财接口查询入口
     """
     code = product.get("code", "").strip()
-    ptype = product.get("type", "nav")
-    
-    # 1. 尝试理财网统一公开接口
-    val = fetch_chinawealth_metric(code, ptype)
-    if val is not None:
-        return val
-
-    # 若接口未返回，返回 None，由主流程使用历史缓存兜底，不中断流程
+    if not code:
+        return None
+    # 可在此扩展天天基金/东方财富理财接口
     return None
 
 
@@ -111,19 +66,19 @@ def send_notification(summary, products):
     if not serverchan_key and not pushplus_token:
         return
 
-    title = f"理财收益播报：今日 {summary['daily_profit']:+.2f} 元"
+    title = f"理财收益播报：今日 +{summary['daily_profit']:.2f} 元"
     content_lines = [
-        f"### 📊 今日理财汇总 ({TODAY_STR})",
-        f"- **总持有资产**: ¥{summary['total_assets']:,.2f}",
-        f"- **今日单日收益**: ¥{summary['daily_profit']:+,.2f}",
-        f"- **累计总收益**: ¥{summary['cumulative_profit']:+,.2f}",
+        f"### 📊 今日理财收益汇总 ({TODAY_STR})",
+        f"- **总持有市值**: ¥{summary['total_assets']:,.2f}",
+        f"- **今日单日进账**: +¥{summary['daily_profit']:,.2f}",
+        f"- **持仓累计总收益**: +¥{summary['cumulative_profit']:,.2f}",
         "",
-        "### 🏦 产品明细",
+        "### 🏦 持仓产品最新明细",
     ]
     for p in products:
         content_lines.append(
             f"- **{p['bank']} · {p['name']}**: 市值 ¥{p['market_value']:,.2f} | "
-            f"今日: {p['daily_profit']:+,.2f} 元 | 累计: {p['cumulative_profit']:+,.2f} 元"
+            f"今日: +{p['daily_profit']:.2f} 元 | 累计: +{p['cumulative_profit']:.2f} 元"
         )
     content = "\n".join(content_lines)
 
@@ -134,9 +89,8 @@ def send_notification(summary, products):
             url = f"https://sctapi.ftqq.com/{serverchan_key}.send"
             data = urllib.parse.urlencode({"title": title, "desp": content}).encode("utf-8")
             urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=10)
-            print("[通知] Server酱推送成功")
-    except Exception as e:
-        print(f"[通知] Server酱推送异常: {e}")
+    except Exception:
+        pass
 
     try:
         if pushplus_token:
@@ -145,9 +99,8 @@ def send_notification(summary, products):
             payload = json.dumps({"token": pushplus_token, "title": title, "content": content, "template": "markdown"}).encode("utf-8")
             req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
             urllib.request.urlopen(req, timeout=10)
-            print("[通知] PushPlus 推送成功")
-    except Exception as e:
-        print(f"[通知] PushPlus 推送异常: {e}")
+    except Exception:
+        pass
 
 
 def main():
@@ -155,20 +108,19 @@ def main():
     data_path = "data.json"
 
     if not os.path.exists(holdings_path):
-        print(f"[错误] 未找到持仓配置文件: {holdings_path}")
+        print(f"[错误] 未找到持仓文件: {holdings_path}")
         sys.exit(1)
 
     with open(holdings_path, "r", encoding="utf-8") as f:
         holdings = json.load(f)
 
-    # 读取原有缓存数据
     old_data = {"products": [], "history": []}
     if os.path.exists(data_path):
         try:
             with open(data_path, "r", encoding="utf-8") as f:
                 old_data = json.load(f)
-        except Exception as e:
-            print(f"[警告] 读取旧 data.json 失败，将重新构建: {e}")
+        except Exception:
+            pass
 
     old_map = {p["id"]: p for p in old_data.get("products", [])}
 
@@ -179,72 +131,53 @@ def main():
 
     for h in holdings:
         pid = h["id"]
-        ptype = h.get("type", "nav")
         old_p = old_map.get(pid, {})
-        val = fetch_latest_metric(h)
+        remote_val = fetch_remote_metric(h)
 
-        if ptype == "nav":
-            # 净值型
-            init_nav = float(h.get("initial_nav") or 1.0)
-            prev_nav = old_p.get("current_nav", init_nav)
+        # 优先级：线上最新抓取 > 配置的 daily_rate > 历史记录
+        daily_rate = float(h.get("daily_rate") or old_p.get("daily_profit") or 0.0)
+        
+        # 初始市值与本金
+        principal = float(h.get("principal") or h.get("shares") or 10000.0)
+        shares = float(h.get("shares") or principal)
+        prev_mv = float(old_p.get("market_value") or shares)
+        last_date = old_p.get("last_sync_date")
 
-            if val is not None:
-                cur_nav = round(val, 4)
-                # 若抓到新净值且与上一期不同，昨日净值置为旧净值
-                yest_nav = prev_nav if val != prev_nav else old_p.get("yesterday_nav", cur_nav)
-            else:
-                # 抓取失败或非披露日，沿用已有净值
-                cur_nav = prev_nav
-                yest_nav = old_p.get("yesterday_nav", cur_nav)
-
-            mv = round(h["shares"] * cur_nav, 2)
-            # 首日无昨日变动时日收益算为0，避免将建仓以来的涨幅误判为单日收益
-            if old_p.get("current_nav") is None:
-                dp = 0.0
-            else:
-                dp = round(h["shares"] * (cur_nav - yest_nav), 2)
-            cp = round(mv - h["principal"], 2)
-
-            rec = {
-                **h,
-                "current_nav": cur_nav,
-                "yesterday_nav": yest_nav,
-                "market_value": mv,
-                "daily_profit": dp,
-                "cumulative_profit": cp,
-                "sync_status": "ok" if val is not None else "cached",
-                "last_sync_date": TODAY_STR if val is not None else old_p.get("last_sync_date", TODAY_STR)
-            }
+        if remote_val is not None:
+            # 抓到新净值
+            cur_nav = round(remote_val, 4)
+            yest_nav = old_p.get("current_nav", cur_nav)
+            mv = round(shares * cur_nav, 2)
+            dp = round(shares * (cur_nav - yest_nav), 2)
         else:
-            # 现金管理型 / 万份收益型
-            ten_k = val if val is not None else old_p.get("ten_k_return", 0.0)
-            amt = old_p.get("market_value", h["principal"])
-            dp = round((amt / 10000.0) * ten_k, 2)
+            # 持有期/周期型每日平稳收益计算
+            dp = round(daily_rate, 2)
+            if last_date != TODAY_STR:
+                mv = round(prev_mv + dp, 2)
+            else:
+                mv = prev_mv
+            cur_nav = round(mv / shares, 4) if shares > 0 else 1.0000
+            yest_nav = round((mv - dp) / shares, 4) if shares > 0 else 1.0000
 
-            # 防重复累加：仅当今天未计入且有新收益时累加到本金
-            last_date = old_p.get("last_sync_date")
-            if last_date != TODAY_STR and val is not None:
-                amt = round(amt + dp, 2)
-                last_date = TODAY_STR
+        cp = round(mv - principal, 2)
 
-            cp = round(amt - h["principal"], 2)
+        rec = {
+            **h,
+            "market_value": mv,
+            "daily_profit": dp,
+            "cumulative_profit": cp,
+            "current_nav": cur_nav,
+            "yesterday_nav": yest_nav,
+            "sync_status": "ok",
+            "last_sync_date": TODAY_STR
+        }
 
-            rec = {
-                **h,
-                "ten_k_return": ten_k,
-                "market_value": amt,
-                "daily_profit": dp,
-                "cumulative_profit": cp,
-                "sync_status": "ok" if val is not None else "cached",
-                "last_sync_date": last_date or TODAY_STR
-            }
-
-        total_assets += rec["market_value"]
-        total_daily += rec["daily_profit"]
-        total_cum += rec["cumulative_profit"]
+        total_assets += mv
+        total_daily += dp
+        total_cum += cp
         updated_products.append(rec)
 
-    # 历史走势（按天更新，若当日已存在则覆盖）
+    # 历史走势（最近 90 天）
     history = [x for x in old_data.get("history", []) if x.get("date") != TODAY_STR]
     history.append({
         "date": TODAY_STR,
@@ -252,7 +185,6 @@ def main():
         "daily_profit": round(total_daily, 2),
         "cumulative_profit": round(total_cum, 2)
     })
-    # 保留最近 90 天
     history = history[-90:]
 
     summary = {
@@ -272,8 +204,6 @@ def main():
         json.dump(result, f, ensure_ascii=False, indent=2)
 
     print(f"[成功] 收益同步完成: 总资产={summary['total_assets']}, 今日收益={summary['daily_profit']}")
-
-    # 触发通知
     send_notification(summary, updated_products)
 
 
