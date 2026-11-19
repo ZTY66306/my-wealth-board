@@ -2,16 +2,17 @@
 # -*- coding: utf-8 -*-
 """
 全自动真实净值抓取与理财收益核算脚本
-- 真实数据源：中国银行官网《代销理财产品净值》公开披露页面/检索接口
-- 严格基于银行披露的真实单位净值计算：市值 = 份额 * 最新单位净值，日收益 = 份额 * (最新净值 - 上期净值)
-- 绝不进行虚假线性估算；非交易日或暂未披露时如实保留上期真实净值
+- 真实数据源：中国银行官网《代销理财产品净值》(https://www.bankofchina.com/sourcedb/srfd6_2024/)
+- 并发拉取官方公示表格，按产品代码或产品名称精确匹配最新单位净值与净值日期
+- 严格按真实净值核算：市值 = 份额 * 最新单位净值，日收益 = 份额 * (最新净值 - 上期净值)
+- 绝不做虚假线性估算；非交易日或暂未更新时如实保留上期真实净值
 """
 
 import json
 import os
 import re
 import sys
-import urllib.parse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 
 import requests
@@ -23,6 +24,8 @@ NOW = datetime.now(CST)
 TODAY_STR = NOW.strftime("%Y-%m-%d")
 TIME_STR = NOW.strftime("%Y-%m-%d %H:%M:%S")
 
+BOC_AGENCY_BASE = "https://www.bankofchina.com/sourcedb/srfd6_2024/"
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -31,6 +34,7 @@ HEADERS = {
     ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    "Referer": BOC_AGENCY_BASE,
 }
 
 LOG_LINES = []
@@ -42,216 +46,183 @@ def log(msg):
     LOG_LINES.append(line)
 
 
-def create_session():
-    s = requests.Session()
-    s.headers.update(HEADERS)
-    return s
+def normalize_name(s):
+    if not s:
+        return ""
+    s = re.sub(r"[（()）\s·•\-|｜]", "", s)
+    return s.upper()
 
 
-def discover_boc_agency_urls(session):
+def parse_boc_page_rows(html_text):
     """
-    从中国银行金融市场频道动态发现“代销理财产品净值”的真实页面与检索接口
-    """
-    candidates = []
-    entry_urls = [
-        "https://www.bankofchina.com/fimarkets/",
-        "https://www.boc.cn/fimarkets/",
-    ]
-    for entry in entry_urls:
-        try:
-            r = session.get(entry, timeout=15)
-            r.encoding = "utf-8"
-            log(f"GET {entry} -> {r.status_code} (len={len(r.text)})")
-            if r.status_code != 200:
-                continue
-            soup = BeautifulSoup(r.text, "html.parser")
-            for a in soup.find_all("a", href=True):
-                txt = a.get_text(strip=True)
-                href = a["href"].strip()
-                if any(k in txt for k in ["代销理财", "理财产品净值", "资管产品净值", "净值"]):
-                    full_url = urllib.parse.urljoin(entry, href)
-                    log(f"  发现入口: [{txt}] -> {full_url}")
-                    candidates.append((txt, full_url))
-            if candidates:
-                break
-        except Exception as e:
-            log(f"访问 {entry} 异常: {e}")
-    return candidates
-
-
-def parse_nav_from_html_table(html_text, target_code, target_name):
-    """
-    从中国银行净值 HTML 表格中解析目标产品的单位净值、累计净值、日增长率、截止日期
+    解析中国银行 srfd6_2024 页面的净值表格，返回所有产品记录列表
     """
     soup = BeautifulSoup(html_text, "html.parser")
-    code_upper = (target_code or "").strip().upper()
-    # 提取核心名称关键字（去掉括号等）
-    short_name = re.sub(r"[（(].*?[）)]", "", target_name or "").strip()
+    items = []
+    headers = []
 
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
         if len(rows) < 2:
             continue
-        headers = [th.get_text(strip=True) for th in rows[0].find_all(["th", "td"])]
+        first_cols = [c.get_text(strip=True) for c in rows[0].find_all(["th", "td"])]
+        if not any("净值" in c or "产品" in c for c in first_cols):
+            continue
+        headers = first_cols
         for tr in rows[1:]:
             cols = [td.get_text(strip=True) for td in tr.find_all("td")]
             if len(cols) < 4:
                 continue
-            row_text = " ".join(cols)
-            row_upper = row_text.upper()
+            code = cols[0].strip()
+            name = cols[1].strip()
+            unit_nav = None
+            cum_nav = None
+            nav_date = None
+            daily_growth = None
 
-            matched = False
-            if code_upper and len(code_upper) >= 5 and code_upper in row_upper:
-                matched = True
-            elif short_name and len(short_name) >= 6 and short_name in row_text:
-                matched = True
-
-            if matched:
-                # 根据表头或列位置提取单位净值、日期
-                unit_nav = None
-                cum_nav = None
-                nav_date = None
-                daily_growth = None
-
-                for idx, val in enumerate(cols):
-                    h = headers[idx] if idx < len(headers) else ""
-                    if "单位净值" in h or "份额净值" in h:
-                        m = re.search(r"\d+\.\d+", val)
-                        if m:
-                            unit_nav = float(m.group(0))
-                    elif "累计净值" in h:
-                        m = re.search(r"\d+\.\d+", val)
-                        if m:
-                            cum_nav = float(m.group(0))
-                    elif "日期" in h:
-                        m = re.search(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", val)
-                        if m:
-                            nav_date = m.group(0).replace("/", "-").replace(".", "-")
-                    elif "日净值增长率" in h or "日涨跌幅" in h:
-                        m = re.search(r"-?\d+\.\d+", val)
-                        if m:
-                            daily_growth = float(m.group(0))
-
-                # 兜底：若表头不标准，按正则提取首个 0.5~5.0 之间的 4 位小数及日期
-                if unit_nav is None:
-                    for val in cols[2:]:
-                        m = re.fullmatch(r"\d+\.\d{3,6}", val.strip())
-                        if m:
-                            v = float(m.group(0))
-                            if 0.5 <= v <= 10.0:
-                                unit_nav = v
-                                break
-                if nav_date is None:
-                    m = re.search(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", row_text)
+            for idx, val in enumerate(cols):
+                h = headers[idx] if idx < len(headers) else ""
+                if "单位净值" in h or "份额净值" in h:
+                    m = re.search(r"\d+\.\d+", val)
+                    if m:
+                        unit_nav = float(m.group(0))
+                elif "累计净值" in h:
+                    m = re.search(r"\d+\.\d+", val)
+                    if m:
+                        cum_nav = float(m.group(0))
+                elif "日期" in h:
+                    m = re.search(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", val)
                     if m:
                         nav_date = m.group(0).replace("/", "-").replace(".", "-")
+                elif "日净值增长率" in h or "增长率" in h:
+                    m = re.search(r"-?\d+\.\d+", val)
+                    if m:
+                        daily_growth = float(m.group(0))
 
-                if unit_nav is not None:
-                    return {
-                        "unit_nav": unit_nav,
-                        "cum_nav": cum_nav or unit_nav,
-                        "nav_date": nav_date or TODAY_STR,
-                        "daily_growth": daily_growth,
-                        "raw_cols": cols,
-                    }
-    return None
+            if unit_nav is None:
+                for val in cols[2:]:
+                    if re.fullmatch(r"\d+\.\d{3,6}", val.strip()):
+                        v = float(val.strip())
+                        if 0.5 <= v <= 10.0:
+                            unit_nav = v
+                            break
+            if nav_date is None:
+                m = re.search(r"\d{4}[-/.]\d{1,2}[-/.]\d{1,2}", " ".join(cols))
+                if m:
+                    nav_date = m.group(0).replace("/", "-").replace(".", "-")
+
+            if unit_nav is not None:
+                items.append({
+                    "code": code,
+                    "name": name,
+                    "unit_nav": unit_nav,
+                    "cum_nav": cum_nav or unit_nav,
+                    "nav_date": nav_date or TODAY_STR,
+                    "daily_growth": daily_growth,
+                })
+    return headers, items
 
 
-def inspect_and_query_boc(session, holdings):
+def detect_total_pages(html_text):
     """
-    通过中国银行官网真实页面/检索接口批量拉取所有持仓的最新净值
+    识别中国银行 TRS WCM 分页脚本中的总页数
     """
-    results = {}
-    candidates = discover_boc_agency_urls(session)
+    # 常见格式: var m_nRecordCount = 3456; var m_nPageSize = 20; 或 createPageHTML(120, 0, "index", "html")
+    m = re.search(r"createPageHTML\s*\(\s*(\d+)\s*,", html_text)
+    if m:
+        return int(m.group(1))
+    m_rec = re.search(r"m_nRecordCount\s*=\s*(\d+)", html_text)
+    m_size = re.search(r"m_nPageSize\s*=\s*(\d+)", html_text)
+    if m_rec and m_size:
+        rec = int(m_rec.group(1))
+        size = max(1, int(m_size.group(1)))
+        return (rec + size - 1) // size
+    m_cnt = re.search(r"m_nPageCount\s*=\s*(\d+)", html_text)
+    if m_cnt:
+        return int(m_cnt.group(1))
+    return 1
 
-    # 优先选“代销理财”相关链接
-    agency_urls = [u for txt, u in candidates if "代销" in txt]
-    other_urls = [u for txt, u in candidates if "代销" not in txt and "净值" in txt]
-    ordered_urls = agency_urls + other_urls
 
-    # 扫描入口页，查找内嵌 iframe、form 或静态表格
-    search_endpoints = []
-    static_pages = []
+def match_holding(item, holding):
+    h_code = (holding.get("code") or "").strip().upper()
+    i_code = (item.get("code") or "").strip().upper()
+    if h_code and i_code and re.match(r"^[A-Z0-9]+$", h_code):
+        if h_code == i_code:
+            return True
+    h_norm = normalize_name(holding.get("name", ""))
+    i_norm = normalize_name(item.get("name", ""))
+    if len(h_norm) >= 6 and h_norm in i_norm:
+        return True
+    return False
 
-    for url in ordered_urls[:6]:
-        try:
-            r = session.get(url, timeout=15)
-            r.encoding = "utf-8"
-            log(f"检查页面 {url} -> {r.status_code} (len={len(r.text)})")
-            if r.status_code != 200:
-                continue
-            soup = BeautifulSoup(r.text, "html.parser")
 
-            # 检查是否有 form 检索接口（如 srh.bankofchina.com）
-            for form in soup.find_all("form"):
-                action = form.get("action") or url
-                method = (form.get("method") or "GET").upper()
-                full_action = urllib.parse.urljoin(url, action)
-                inputs = {
-                    inp.get("name"): inp.get("value", "")
-                    for inp in form.find_all(["input", "select"])
-                    if inp.get("name")
-                }
-                log(f"  发现表单: {method} {full_action} inputs={list(inputs.keys())}")
-                search_endpoints.append((method, full_action, inputs, url))
+def fetch_all_boc_agency_navs(holdings):
+    """
+    并发抓取中国银行代销理财产品净值公示页，匹配全部持仓
+    """
+    matched = {}
+    session = requests.Session()
+    session.headers.update(HEADERS)
 
-            # 检查 iframe
-            for iframe in soup.find_all("iframe", src=True):
-                iframe_url = urllib.parse.urljoin(url, iframe["src"])
-                log(f"  发现 iframe: {iframe_url}")
-                static_pages.append(iframe_url)
+    first_url = BOC_AGENCY_BASE + "index.html"
+    try:
+        r0 = session.get(first_url, timeout=15)
+        r0.encoding = "utf-8"
+        log(f"GET {first_url} -> {r0.status_code} (len={len(r0.text)})")
+        if r0.status_code != 200:
+            return matched
+    except Exception as e:
+        log(f"首页请求失败: {e}")
+        return matched
 
-            # 检查 script 中的 srh.bankofchina.com 或接口 URL
-            for m in re.findall(r"https?://[a-zA-Z0-9._/-]*(?:srh|sourcedb|finas|dxlc)[a-zA-Z0-9._/?=&-]*", r.text):
-                if m not in static_pages:
-                    log(f"  脚本发现链接: {m}")
-                    static_pages.append(m)
+    headers, first_items = parse_boc_page_rows(r0.text)
+    total_pages = detect_total_pages(r0.text)
+    log(f"表头: {headers}")
+    log(f"第1页解析到 {len(first_items)} 条记录，识别总页数={total_pages}")
+    if first_items:
+        log(f"样例记录: {first_items[0]}")
 
-            # 直接尝试从当前页解析
-            for h in holdings:
-                if h["id"] not in results:
-                    parsed = parse_nav_from_html_table(r.text, h.get("code"), h.get("name"))
-                    if parsed:
-                        log(f"  [命中] {h['name']} ({h.get('code')}): NAV={parsed['unit_nav']} 日期={parsed['nav_date']}")
-                        results[h["id"]] = parsed
-        except Exception as e:
-            log(f"检查 {url} 异常: {e}")
-
-    # 如果发现了检索表单，用每个产品的代码/名称去提交查询
-    for method, action_url, base_inputs, referer in search_endpoints:
-        if len(results) == len(holdings):
-            break
+    for item in first_items:
         for h in holdings:
-            if h["id"] in results:
-                continue
-            # 识别可能的代码输入框和名称输入框
-            code_val = h.get("code", "")
-            name_val = re.sub(r"[（(].*?[）)]", "", h.get("name", ""))
-            payload = dict(base_inputs)
-            for k in list(payload.keys()):
-                kl = k.lower()
-                if any(x in kl for x in ["code", "dm", "bm", "cpdm"]):
-                    payload[k] = code_val
-                elif any(x in kl for x in ["name", "mc", "cpmc", "key", "word", "search"]):
-                    if not any(x in kl for x in ["code", "dm"]):
-                        payload[k] = code_val if re.match(r"^[A-Za-z0-9]+$", code_val) else name_val[:8]
-            try:
-                hdrs = {"Referer": referer}
-                if method == "POST":
-                    resp = session.post(action_url, data=payload, headers=hdrs, timeout=15)
-                else:
-                    resp = session.get(action_url, params=payload, headers=hdrs, timeout=15)
-                resp.encoding = "utf-8"
-                parsed = parse_nav_from_html_table(resp.text, code_val, h.get("name"))
-                if parsed:
-                    log(f"  [表单命中] {h['name']} ({code_val}): NAV={parsed['unit_nav']} 日期={parsed['nav_date']}")
-                    results[h["id"]] = parsed
-                else:
-                    log(f"  [表单未命中] {h['name']} ({code_val}) -> status={resp.status_code}, len={len(resp.text)}")
-            except Exception as e:
-                log(f"  表单查询 {code_val} 异常: {e}")
+            if h["id"] not in matched and match_holding(item, h):
+                matched[h["id"]] = item
+                log(f"  [第1页命中] {h['name']} -> 代码={item['code']} 名称={item['name']} 净值={item['unit_nav']} 日期={item['nav_date']}")
 
-    return results
+    if len(matched) == len(holdings) or total_pages <= 1:
+        return matched
+
+    # 最多扫描前 300 页，使用线程池并发提速，全部命中即提前停止
+    max_pages = min(total_pages, 300)
+    log(f"开始并发扫描剩余分页 (index_1.html ~ index_{max_pages - 1}.html)...")
+
+    def fetch_page(page_idx):
+        url = f"{BOC_AGENCY_BASE}index_{page_idx}.html"
+        try:
+            resp = session.get(url, timeout=12)
+            resp.encoding = "utf-8"
+            if resp.status_code == 200:
+                _, items = parse_boc_page_rows(resp.text)
+                return page_idx, items
+        except Exception:
+            pass
+        return page_idx, []
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        futures = [pool.submit(fetch_page, idx) for idx in range(1, max_pages)]
+        for fut in as_completed(futures):
+            page_idx, items = fut.result()
+            for item in items:
+                for h in holdings:
+                    if h["id"] not in matched and match_holding(item, h):
+                        matched[h["id"]] = item
+                        log(f"  [第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 名称={item['name']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+            if len(matched) == len(holdings):
+                log("全部持仓已命中，提前结束扫描！")
+                for f in futures:
+                    f.cancel()
+                break
+
+    return matched
 
 
 def send_notification(summary, products):
@@ -270,9 +241,9 @@ def send_notification(summary, products):
         "### 🏦 产品净值明细",
     ]
     for p in products:
-        tag = "✅实时" if p.get("sync_status") == "live" else "⏸️沿用"
+        tag = "✅实时" if p.get("sync_status") == "live" else "⏸️未变"
         content_lines.append(
-            f"- **{p['bank']} · {p['name']}** ({tag} 净值 {p['current_nav']}): "
+            f"- **{p['bank']} · {p['name']}** ({tag} 净值 {p['current_nav']} / {p.get('nav_date', '')}): "
             f"市值 ¥{p['market_value']:,.2f} | 日收益 {p['daily_profit']:+.2f} | 累计 {p['cumulative_profit']:+.2f}"
         )
     content = "\n".join(content_lines)
@@ -309,11 +280,10 @@ def main():
             pass
 
     old_map = {p["id"]: p for p in old_data.get("products", [])}
-    session = create_session()
 
-    log("开始从中国银行官网拉取实时公开净值...")
-    live_map = inspect_and_query_boc(session, holdings)
-    log(f"拉取结束: 共 {len(holdings)} 只持仓，实时命中 {len(live_map)} 只")
+    log("开始抓取中国银行官网《代销理财产品净值》...")
+    live_map = fetch_all_boc_agency_navs(holdings)
+    log(f"拉取完成: 共 {len(holdings)} 只持仓，实时命中 {len(live_map)} 只")
 
     updated_products = []
     total_assets = 0.0
@@ -330,31 +300,37 @@ def main():
         if live is not None:
             cur_nav = round(float(live["unit_nav"]), 4)
             nav_date = live.get("nav_date") or TODAY_STR
+            real_code = live.get("code") or h.get("code")
             old_nav = old_p.get("current_nav")
             old_date = old_p.get("nav_date")
-
-            if old_nav is not None and nav_date != old_date:
-                yest_nav = round(float(old_nav), 4)
-                dp = round(shares * (cur_nav - yest_nav), 2)
-            elif old_nav is not None and cur_nav != float(old_nav):
-                yest_nav = round(float(old_nav), 4)
-                dp = round(shares * (cur_nav - yest_nav), 2)
-            else:
-                # 同一净值日期重复跑，保留当期已算出的日收益，不重复叠加
-                yest_nav = old_p.get("yesterday_nav", cur_nav)
-                if live.get("daily_growth") is not None and old_p.get("daily_profit") is None:
-                    dp = round(shares * cur_nav * (live["daily_growth"] / 100.0), 2)
-                else:
-                    dp = old_p.get("daily_profit", 0.0)
+            old_status = old_p.get("sync_status")
 
             mv = round(shares * cur_nav, 2)
             cp = round(mv - principal, 2)
+
+            if old_status == "live" and old_nav is not None and nav_date != old_date:
+                # 新交易日真实净值变动：精确计算单日收益
+                yest_nav = round(float(old_nav), 4)
+                dp = round(shares * (cur_nav - yest_nav), 2)
+            elif old_status == "live" and old_nav is not None and nav_date == old_date:
+                # 同一净值日期，保留已算出的当期日收益，不重复加
+                yest_nav = old_p.get("yesterday_nav", cur_nav)
+                dp = old_p.get("daily_profit", 0.0)
+            else:
+                # 首次接入真实净值：若官网提供了日净值增长率则直接换算，否则保留上期记录作为初始展示
+                yest_nav = cur_nav
+                if live.get("daily_growth") is not None:
+                    dp = round(mv * (live["daily_growth"] / 100.0), 2)
+                else:
+                    dp = old_p.get("daily_profit", 0.0)
+
             status = "live"
         else:
-            # 未拉取到新净值时：绝不做虚假估算，如实沿用上期真实数据
+            # 未命中时不造假，如实保留上期记录
             cur_nav = old_p.get("current_nav", 1.0)
             yest_nav = old_p.get("yesterday_nav", cur_nav)
-            nav_date = old_p.get("nav_date", old_p.get("last_sync_date", TODAY_STR))
+            nav_date = old_p.get("nav_date", TODAY_STR)
+            real_code = h.get("code")
             mv = old_p.get("market_value", round(shares * cur_nav, 2))
             dp = old_p.get("daily_profit", 0.0)
             cp = round(mv - principal, 2)
@@ -362,6 +338,7 @@ def main():
 
         rec = {
             **h,
+            "code": real_code,
             "market_value": mv,
             "daily_profit": dp,
             "cumulative_profit": cp,
