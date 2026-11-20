@@ -388,7 +388,12 @@
       const totalPrincipal = allProducts.reduce((sum, p) => sum + (p.principal || 0) * (p.currency === 'USD' ? 7.20 : 1), 0);
       document.getElementById('totalPrincipal').textContent = `¥ ${formatMoney(totalPrincipal)}`;
 
-      document.getElementById('dailyProfitTitle').textContent = shortLatest ? `最新一日收益 (${shortLatest} · 元)` : '最新一日收益 (元)';
+      let cnDateLabel = '';
+      if (shortLatest && shortLatest.includes('-')) {
+        const [mm, dd] = shortLatest.split('-');
+        cnDateLabel = `${parseInt(mm, 10)}月${parseInt(dd, 10)}日`;
+      }
+      document.getElementById('dailyProfitTitle').textContent = cnDateLabel ? `${cnDateLabel}收益 (元)` : '最新一日收益 (元)';
       const dpEl = document.getElementById('dailyProfit');
       dpEl.textContent = formatSign(summary.daily_profit);
       dpEl.className = `text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight ${summary.daily_profit >= 0 ? 'profit-red' : 'profit-green'}`;
