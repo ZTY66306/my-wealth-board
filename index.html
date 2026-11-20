@@ -207,6 +207,14 @@
   </div>
 
   <script>
+    const SUPABASE_URL = 'https://cneckoobjhzcapvlgxmy.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_RejX8eEQE8e0edPH9948Ig_6FtLYnkK';
+    const SB_HEADERS = {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json'
+    };
+
     let isPrivacyMode = localStorage.getItem('cfg_privacy') === 'true';
     let allProducts = [];
     let currentFilter = 'all';
@@ -282,18 +290,47 @@
     async function loadDashboard() {
       updateEyeIcons();
       try {
-        const res = await fetch(`./data.json?t=${Date.now()}`);
-        if (!res.ok) throw new Error('data.json 尚未生成');
-        const data = await res.json();
-        
-        // 过滤掉用户已删除/隐藏的产品
-        const hiddenList = JSON.parse(localStorage.getItem('my_hidden_holdings') || '[]');
-        data.products = (data.products || []).filter(p => !hiddenList.includes(p.id));
+        let data = null;
+        try {
+          const [hRes, histRes] = await Promise.all([
+            fetch(`${SUPABASE_URL}/rest/v1/holdings?select=*&order=created_at.asc`, { headers: SB_HEADERS }),
+            fetch(`${SUPABASE_URL}/rest/v1/wealth_history?select=*&order=date.asc&limit=90`, { headers: SB_HEADERS })
+          ]);
+          if (hRes.ok && histRes.ok) {
+            const products = await hRes.json();
+            const history = await histRes.json();
+            let latestUpd = '';
+            products.forEach(p => { if (p.updated_at && p.updated_at > latestUpd) latestUpd = p.updated_at; });
+            const fmtUpd = latestUpd ? new Date(latestUpd).toLocaleString('zh-CN', { hour12: false }) : '--';
+            data = {
+              updated_at: `${fmtUpd} (Supabase 云端同步)`,
+              summary: {},
+              products: products.map(p => ({
+                ...p,
+                principal: Number(p.principal || 0),
+                shares: Number(p.shares || 0),
+                current_nav: Number(p.current_nav || 1),
+                yesterday_nav: Number(p.yesterday_nav || 1),
+                market_value: Number(p.market_value || 0),
+                daily_profit: Number(p.daily_profit || 0),
+                cumulative_profit: Number(p.cumulative_profit || 0)
+              })),
+              history: history.map(h => ({
+                date: h.date,
+                total_assets: Number(h.total_assets || 0),
+                daily_profit: Number(h.daily_profit || 0),
+                cumulative_profit: Number(h.cumulative_profit || 0)
+              }))
+            };
+          }
+        } catch (sbErr) {
+          console.warn('Supabase 请求降级到本地缓存:', sbErr);
+        }
 
-        // 读取本地追加的临时持仓
-        const localItems = JSON.parse(localStorage.getItem('my_extra_holdings') || '[]').filter(p => !hiddenList.includes(p.id));
-        if (localItems.length > 0) {
-          data.products = [...data.products, ...localItems];
+        if (!data) {
+          const res = await fetch(`./data.json?t=${Date.now()}`);
+          if (!res.ok) throw new Error('data.json 尚未生成');
+          data = await res.json();
         }
 
         // 确定全部持仓中最新的官方净值日期（如 2026-11-18）
@@ -619,7 +656,7 @@
       }, 500);
     }
 
-    function saveNewHolding() {
+    async function saveNewHolding() {
       const bank = document.getElementById('fBank').value;
       const type = document.getElementById('fType').value;
       const name = document.getElementById('fName').value.trim();
@@ -632,41 +669,60 @@
         return alert('请先搜索或填写产品名称、代码和买入本金！');
       }
 
+      const btn = document.getElementById('saveProductBtn');
+      btn.disabled = true;
+      btn.textContent = '正在保存到云端数据库...';
+
       const mv = Number((shares * nav).toFixed(2));
-      const localItems = JSON.parse(localStorage.getItem('my_extra_holdings') || '[]');
-      localItems.push({
-        id: `extra_${Date.now()}`,
-        bank, name, code, type, shares, principal,
+      const newRow = {
+        id: `prod_${Date.now()}`,
+        bank,
+        name,
+        code,
+        type,
+        currency: name.includes('美元') ? 'USD' : 'CNY',
+        principal,
+        shares,
+        current_nav: nav,
+        yesterday_nav: nav,
         market_value: mv,
         daily_profit: 0.0,
         cumulative_profit: Number((mv - principal).toFixed(2)),
-        current_nav: nav,
-        nav_date: selectedNavDate,
-        sync_status: selectedNavDate ? 'live' : 'cached',
-        ten_k_return: 0.0
-      });
-      localStorage.setItem('my_extra_holdings', JSON.stringify(localItems));
+        nav_date: selectedNavDate || '',
+        sync_status: selectedNavDate ? 'live' : 'cached'
+      };
 
-      closeModal('addModal');
-      showToast('🎉 持仓添加成功！已实时更新看板');
-      loadDashboard();
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/holdings`, {
+          method: 'POST',
+          headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+          body: JSON.stringify(newRow)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        closeModal('addModal');
+        showToast('🎉 已保存到云端数据库！全家手机同步生效');
+        await loadDashboard();
+      } catch (err) {
+        alert('保存失败，请检查网络后重试：' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '保存持仓并更新看板';
+      }
     }
 
-    function deleteHolding(id) {
-      if (!confirm("确定要删除该持仓产品吗？")) return;
-      
-      let localItems = JSON.parse(localStorage.getItem("my_extra_holdings") || "[]");
-      localItems = localItems.filter(item => item.id !== id);
-      localStorage.setItem("my_extra_holdings", JSON.stringify(localItems));
-
-      let hiddenList = JSON.parse(localStorage.getItem("my_hidden_holdings") || "[]");
-      if (!hiddenList.includes(id)) {
-        hiddenList.push(id);
-        localStorage.setItem("my_hidden_holdings", JSON.stringify(hiddenList));
+    async function deleteHolding(id) {
+      if (!confirm("确定要删除该持仓产品吗？（将同步从全家云端账本移除）")) return;
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/holdings?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: SB_HEADERS
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        showToast("🗑️ 已从云端删除该持仓并重算总资产");
+        await loadDashboard();
+      } catch (err) {
+        alert('删除失败，请稍后重试：' + err.message);
       }
-
-      showToast("🗑️ 已删除该持仓并重新计算总资产");
-      loadDashboard();
     }
 
     window.addEventListener('DOMContentLoaded', loadDashboard);

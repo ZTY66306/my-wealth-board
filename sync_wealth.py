@@ -29,6 +29,73 @@ TIME_STR = NOW.strftime("%Y-%m-%d %H:%M:%S")
 BOC_AGENCY_BASE = "https://www.bankofchina.com/sourcedb/srfd6_2024/"
 BOC_WM_BASE = "https://www.bankofchina.com/fimarkets/bocwm/fp82/"
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://cneckoobjhzcapvlgxmy.supabase.co").rstrip("/")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_RejX8eEQE8e0edPH9948Ig_6FtLYnkK")
+
+
+def sb_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def load_holdings_from_supabase():
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/holdings?select=*&order=created_at.asc",
+            headers=sb_headers(),
+            timeout=15,
+        )
+        if r.status_code == 200:
+            rows = r.json()
+            if rows:
+                log(f"[Supabase] 成功读取云端持仓 {len(rows)} 只")
+                return rows
+    except Exception as e:
+        log(f"[Supabase] 读取持仓异常，将降级读取本地 holdings.json: {e}")
+    return None
+
+
+def sync_results_to_supabase(updated_products, today_hist_row):
+    try:
+        payload = []
+        for p in updated_products:
+            payload.append({
+                "id": p["id"],
+                "bank": p["bank"],
+                "name": p["name"],
+                "code": p.get("code", ""),
+                "share_class": p.get("share_class", ""),
+                "match_keywords": p.get("match_keywords", []),
+                "exclude_keywords": p.get("exclude_keywords", []),
+                "currency": p.get("currency", "CNY"),
+                "type": p.get("type", "nav"),
+                "principal": float(p.get("principal", 0)),
+                "shares": float(p.get("shares", 0)),
+                "current_nav": float(p.get("current_nav", 1)),
+                "yesterday_nav": float(p.get("yesterday_nav", 1)),
+                "market_value": float(p.get("market_value", 0)),
+                "daily_profit": float(p.get("daily_profit", 0)),
+                "cumulative_profit": float(p.get("cumulative_profit", 0)),
+                "nav_date": p.get("nav_date", ""),
+                "sync_status": p.get("sync_status", "live"),
+                "last_page": p.get("last_page"),
+                "updated_at": NOW.isoformat(),
+            })
+        hdrs = {**sb_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"}
+        r1 = requests.post(f"{SUPABASE_URL}/rest/v1/holdings", headers=hdrs, json=payload, timeout=15)
+        r2 = requests.post(
+            f"{SUPABASE_URL}/rest/v1/wealth_history",
+            headers=hdrs,
+            json={**today_hist_row, "updated_at": NOW.isoformat()},
+            timeout=15,
+        )
+        log(f"[Supabase] 云端回写完成: holdings={r1.status_code}, wealth_history={r2.status_code}")
+    except Exception as e:
+        log(f"[Supabase] 云端回写异常: {e}")
+
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -340,12 +407,14 @@ def main():
     holdings_path = "holdings.json"
     data_path = "data.json"
 
-    if not os.path.exists(holdings_path):
-        log(f"[错误] 未找到 {holdings_path}")
-        sys.exit(1)
-
-    with open(holdings_path, "r", encoding="utf-8") as f:
-        holdings = json.load(f)
+    # 优先从 Supabase 读取最新持仓（自动同步用户在网页端增删的产品）
+    holdings = load_holdings_from_supabase()
+    if not holdings:
+        if not os.path.exists(holdings_path):
+            log(f"[错误] 未找到 {holdings_path} 且 Supabase 读取失败")
+            sys.exit(1)
+        with open(holdings_path, "r", encoding="utf-8") as f:
+            holdings = json.load(f)
 
     old_data = {"products": [], "history": []}
     if os.path.exists(data_path):
@@ -356,6 +425,10 @@ def main():
             pass
 
     old_map = {p["id"]: p for p in old_data.get("products", [])}
+    # 如果云端记录本身已有更完整的历史字段，优先以云端状态为基准
+    for h in holdings:
+        if h.get("nav_date") and h.get("current_nav"):
+            old_map[h["id"]] = {**old_map.get(h["id"], {}), **h}
 
     log("开始抓取中国银行官网《代销理财产品净值》...")
     live_map = fetch_all_boc_agency_navs(holdings, old_map)
@@ -450,13 +523,14 @@ def main():
         total_cum += cp * fx
         updated_products.append(rec)
 
-    history = [x for x in old_data.get("history", []) if x.get("date") != TODAY_STR]
-    history.append({
+    today_hist_row = {
         "date": TODAY_STR,
         "total_assets": round(total_assets, 2),
         "daily_profit": round(total_daily, 2),
         "cumulative_profit": round(total_cum, 2),
-    })
+    }
+    history = [x for x in old_data.get("history", []) if x.get("date") != TODAY_STR]
+    history.append(today_hist_row)
     history = history[-90:]
 
     summary = {
@@ -464,6 +538,9 @@ def main():
         "daily_profit": round(total_daily, 2),
         "cumulative_profit": round(total_cum, 2),
     }
+
+    # 回写最新净值与历史汇总到 Supabase 云端数据库
+    sync_results_to_supabase(updated_products, today_hist_row)
 
     result = {
         "updated_at": TIME_STR,
