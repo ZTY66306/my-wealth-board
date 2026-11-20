@@ -6,8 +6,8 @@
     "code": "120030D",
     "reg_code": "Z7001626000362",
     "type": "nav",
-    "shares": 19745.29,
-    "principal": 19938.61
+    "shares": 19803.94,
+    "principal": 20000.0
   },
   {
     "id": "cmb_tj_30d_23",
@@ -16,8 +16,8 @@
     "code": "120137D",
     "reg_code": "",
     "type": "nav",
-    "shares": 19922.69,
-    "principal": 19986.37
+    "shares": 19936.2,
+    "principal": 20000.0
   },
   {
     "id": "cmb_yy_90d",
@@ -26,8 +26,8 @@
     "code": "122511D",
     "reg_code": "",
     "type": "nav",
-    "shares": 48997.56,
-    "principal": 49926.29
+    "shares": 49069.64,
+    "principal": 50000.0
   },
   {
     "id": "cmb_fh_daily_29",
@@ -36,8 +36,8 @@
     "code": "133013D",
     "reg_code": "",
     "type": "nav",
-    "shares": 19858.43,
-    "principal": 19945.13
+    "shares": 19912.38,
+    "principal": 20000.0
   },
   {
     "id": "spdb_szx_14d_85a",
@@ -46,8 +46,8 @@
     "code": "2501260100",
     "reg_code": "",
     "type": "nav",
-    "shares": 19727.76,
-    "principal": 19950.55
+    "shares": 19776.53,
+    "principal": 20000.0
   },
   {
     "id": "psbc_hn_14d_3",
@@ -56,7 +56,7 @@
     "code": "2501BS003A",
     "reg_code": "",
     "type": "nav",
-    "shares": 9893.15,
-    "principal": 9923.23
+    "shares": 9969.1,
+    "principal": 10000.0
   }
 ]
