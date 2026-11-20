@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-20 18:14:29",
+  "updated_at": "2026-11-21 00:38:42",
   "summary": {
     "total_assets": 563605.09,
     "daily_profit": 66.27,
@@ -27,8 +27,8 @@
       "sync_status": "live",
       "last_page": 19,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "cmb_tj_30d_23",
@@ -51,8 +51,8 @@
       "sync_status": "live",
       "last_page": 23,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "cmb_yy_90d",
@@ -75,8 +75,8 @@
       "sync_status": "live",
       "last_page": 28,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "cmb_fh_daily_29",
@@ -99,8 +99,8 @@
       "sync_status": "live",
       "last_page": 15,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "spdb_szx_14d_85a",
@@ -123,8 +123,8 @@
       "sync_status": "live",
       "last_page": 10,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "psbc_hn_14d_3",
@@ -147,8 +147,8 @@
       "sync_status": "live",
       "last_page": 13,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocom_wxld_38",
@@ -171,8 +171,8 @@
       "sync_status": "live",
       "last_page": 38,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocom_wxld_58",
@@ -195,8 +195,8 @@
       "sync_status": "live",
       "last_page": 36,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocom_wxhx_38",
@@ -219,8 +219,8 @@
       "sync_status": "live",
       "last_page": 52,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "citic_ayx_255g",
@@ -243,8 +243,8 @@
       "sync_status": "live",
       "last_page": 17,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_esg_30d_3a",
@@ -271,8 +271,8 @@
       "sync_status": "live",
       "last_page": 10,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_esg_7d_a",
@@ -302,8 +302,8 @@
       "sync_status": "live",
       "last_page": 18,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_14d_2a",
@@ -328,8 +328,8 @@
       "sync_status": "live",
       "last_page": 2,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_30d_1a_xcz",
@@ -354,8 +354,8 @@
       "sync_status": "live",
       "last_page": 13,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_30d_a",
@@ -387,8 +387,8 @@
       "sync_status": "live",
       "last_page": 19,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_7d_3a",
@@ -413,8 +413,8 @@
       "sync_status": "live",
       "last_page": 6,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_7d_2a",
@@ -439,8 +439,8 @@
       "sync_status": "live",
       "last_page": 18,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfqq_7d_4a",
@@ -465,8 +465,32 @@
       "sync_status": "live",
       "last_page": 3,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
+    },
+    {
+      "id": "ceb_ygj_23",
+      "bank": "光大理财",
+      "name": "阳光金增利稳健天天购23号（14天最低持有）",
+      "code": "EW4895D",
+      "share_class": "",
+      "match_keywords": [],
+      "exclude_keywords": [],
+      "currency": "CNY",
+      "type": "nav",
+      "principal": 30000.0,
+      "shares": 28871.13,
+      "current_nav": 1.041,
+      "yesterday_nav": 1.0409,
+      "market_value": 30054.85,
+      "daily_profit": 2.89,
+      "cumulative_profit": 54.85,
+      "nav_date": "2026-11-19",
+      "sync_status": "live",
+      "last_page": 6,
+      "created_at": "2026-11-20T07:17:21.604695+00:00",
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfxy_14d_8a",
@@ -492,8 +516,8 @@
       "sync_status": "live",
       "last_page": 16,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfxy_7d_2a",
@@ -519,8 +543,8 @@
       "sync_status": "live",
       "last_page": 8,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfdx_90d_a",
@@ -546,8 +570,8 @@
       "sync_status": "live",
       "last_page": 40,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfqq_30d_2a",
@@ -574,8 +598,8 @@
       "sync_status": "live",
       "last_page": 4,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_esg_daily_a",
@@ -602,32 +626,8 @@
       "sync_status": "live",
       "last_page": 18,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
-    },
-    {
-      "id": "ceb_ygj_23",
-      "bank": "光大理财",
-      "name": "阳光金增利稳健天天购23号（14天最低持有）",
-      "code": "EW4895D",
-      "share_class": "",
-      "match_keywords": [],
-      "exclude_keywords": [],
-      "currency": "CNY",
-      "type": "nav",
-      "principal": 30000.0,
-      "shares": 28871.13,
-      "current_nav": 1.041,
-      "yesterday_nav": 1.0409,
-      "market_value": 30054.85,
-      "daily_profit": 2.89,
-      "cumulative_profit": 54.85,
-      "nav_date": "2026-11-19",
-      "sync_status": "live",
-      "last_page": 6,
-      "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "ceb_ygj_ax3d",
@@ -650,8 +650,8 @@
       "sync_status": "live",
       "last_page": 6,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "amundi_sjpy_7d",
@@ -677,8 +677,8 @@
       "sync_status": "live",
       "last_page": 0,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_usd_daily",
@@ -701,8 +701,8 @@
       "sync_status": "live",
       "last_page": 19,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     },
     {
       "id": "bocwm_wfcz_daily_1a",
@@ -729,8 +729,8 @@
       "sync_status": "live",
       "last_page": 23,
       "created_at": "2026-11-20T07:17:21.604695+00:00",
-      "updated_at": "2026-11-20T07:19:45.529137+00:00",
-      "last_sync_date": "2026-11-20"
+      "updated_at": "2026-11-20T10:14:29.41989+00:00",
+      "last_sync_date": "2026-11-21"
     }
   ],
   "history": [
@@ -760,6 +760,12 @@
     },
     {
       "date": "2026-11-20",
+      "total_assets": 563605.09,
+      "daily_profit": 66.27,
+      "cumulative_profit": 3667.36
+    },
+    {
+      "date": "2026-11-21",
       "total_assets": 563605.09,
       "daily_profit": 66.27,
       "cumulative_profit": 3667.36
