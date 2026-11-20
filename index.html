@@ -74,11 +74,11 @@
       </div>
 
       <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
-        <div class="text-xs font-medium text-slate-500">最新单日收益 (元)</div>
+        <div id="dailyProfitTitle" class="text-xs font-medium text-slate-500">最新一日收益 (元)</div>
         <div id="dailyProfit" class="text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight profit-red">+0.00</div>
         <div class="text-xs text-slate-400 mt-2 flex items-center justify-between">
-          <span>收益计入</span>
-          <span id="dailyStatus" class="font-medium text-slate-600">正常计息</span>
+          <span>披露进度</span>
+          <span id="dailyStatus" class="font-medium text-slate-600">--</span>
         </div>
       </div>
 
@@ -115,8 +115,8 @@
         </div>
         <div class="flex gap-1 text-xs">
           <button onclick="filterType('all')" id="tabAll" class="px-3 py-1 rounded-lg font-medium bg-slate-900 text-white transition">全部</button>
-          <button onclick="filterType('nav')" id="tabNav" class="px-3 py-1 rounded-lg font-medium text-slate-600 hover:bg-slate-200 transition">净值型</button>
-          <button onclick="filterType('ten_thousand')" id="tabTen" class="px-3 py-1 rounded-lg font-medium text-slate-600 hover:bg-slate-200 transition">现金活钱</button>
+          <button onclick="filterType('updated')" id="tabUpdated" class="px-3 py-1 rounded-lg font-medium text-slate-600 hover:bg-slate-200 transition">已更新</button>
+          <button onclick="filterType('pending')" id="tabPending" class="px-3 py-1 rounded-lg font-medium text-slate-600 hover:bg-slate-200 transition">待披露</button>
         </div>
       </div>
 
@@ -296,18 +296,36 @@
           data.products = [...data.products, ...localItems];
         }
 
-        // 重新核算总资产和收益（美元产品按 7.20 折算人民币计入总汇总）
+        // 确定全部持仓中最新的官方净值日期（如 2026-11-18）
+        let latestNavDate = '';
+        data.products.forEach(p => {
+          if (p.nav_date && p.nav_date > latestNavDate) {
+            latestNavDate = p.nav_date;
+          }
+        });
+        window._latestNavDate = latestNavDate;
+
+        // 重新核算总资产和收益（仅将“净值日期 = 最新日”的产品计入最新一日收益，不混算旧日期）
         const USD_CNY = 7.20;
-        let sumAssets = 0, sumDaily = 0, sumCum = 0;
+        let sumAssets = 0, sumDaily = 0, sumCum = 0, updatedCnt = 0, pendingCnt = 0;
         data.products.forEach(p => {
           const fx = p.currency === 'USD' ? USD_CNY : 1;
           sumAssets += (p.market_value || p.shares || 0) * fx;
-          sumDaily += (p.daily_profit || 0) * fx;
           sumCum += (p.cumulative_profit || 0) * fx;
+          const isLatest = !latestNavDate || p.nav_date === latestNavDate;
+          if (isLatest) {
+            sumDaily += (p.daily_profit || 0) * fx;
+            updatedCnt++;
+          } else {
+            pendingCnt++;
+          }
         });
         data.summary.total_assets = sumAssets;
         data.summary.daily_profit = sumDaily;
         data.summary.cumulative_profit = sumCum;
+        data.summary.latest_nav_date = latestNavDate;
+        data.summary.updated_count = updatedCnt;
+        data.summary.pending_count = pendingCnt;
 
         renderUI(data);
       } catch (err) {
@@ -318,6 +336,8 @@
     function renderUI(data) {
       const summary = data.summary || {};
       allProducts = data.products || [];
+      const latestDate = summary.latest_nav_date || '';
+      const shortLatest = latestDate ? latestDate.slice(5) : '';
 
       if (data.updated_at) {
         document.getElementById('syncTime').innerHTML = `
@@ -331,9 +351,20 @@
       const totalPrincipal = allProducts.reduce((sum, p) => sum + (p.principal || 0) * (p.currency === 'USD' ? 7.20 : 1), 0);
       document.getElementById('totalPrincipal').textContent = `¥ ${formatMoney(totalPrincipal)}`;
 
+      document.getElementById('dailyProfitTitle').textContent = shortLatest ? `最新一日收益 (${shortLatest} · 元)` : '最新一日收益 (元)';
       const dpEl = document.getElementById('dailyProfit');
       dpEl.textContent = formatSign(summary.daily_profit);
       dpEl.className = `text-2xl sm:text-3xl font-extrabold mt-1 tracking-tight ${summary.daily_profit >= 0 ? 'profit-red' : 'profit-green'}`;
+
+      const upd = summary.updated_count || 0;
+      const pend = summary.pending_count || 0;
+      const totalCnt = allProducts.length;
+      const statusEl = document.getElementById('dailyStatus');
+      if (pend > 0) {
+        statusEl.innerHTML = `<span class="text-emerald-700">${upd}/${totalCnt} 已更新</span> · <span class="text-amber-600">${pend} 待披露</span>`;
+      } else {
+        statusEl.innerHTML = `<span class="text-emerald-700">全部 ${totalCnt}/${totalCnt} 已更新</span>`;
+      }
 
       const cpEl = document.getElementById('cumProfit');
       cpEl.textContent = formatSign(summary.cumulative_profit);
@@ -349,8 +380,8 @@
 
     function filterType(type) {
       currentFilter = type;
-      ['all', 'nav', 'ten_thousand'].forEach(t => {
-        const btn = document.getElementById(t === 'all' ? 'tabAll' : t === 'nav' ? 'tabNav' : 'tabTen');
+      ['all', 'updated', 'pending'].forEach(t => {
+        const btn = document.getElementById(t === 'all' ? 'tabAll' : t === 'updated' ? 'tabUpdated' : 'tabPending');
         if (t === type) {
           btn.className = 'px-3 py-1 rounded-lg font-medium bg-slate-900 text-white transition';
         } else {
@@ -361,25 +392,40 @@
     }
 
     function renderProducts() {
-      const filtered = currentFilter === 'all' ? allProducts : allProducts.filter(p => p.type === currentFilter);
+      const latestDate = window._latestNavDate || '';
+      let filtered = allProducts;
+      if (currentFilter === 'updated') {
+        filtered = allProducts.filter(p => !latestDate || p.nav_date === latestDate);
+      } else if (currentFilter === 'pending') {
+        filtered = allProducts.filter(p => latestDate && p.nav_date !== latestDate);
+      }
       document.getElementById('productCount').textContent = filtered.length;
 
       const listEl = document.getElementById('productList');
       if (filtered.length === 0) {
-        listEl.innerHTML = `<div class="col-span-2 text-center py-8 text-slate-400 text-xs">暂无该分类理财</div>`;
+        listEl.innerHTML = `<div class="col-span-2 text-center py-8 text-slate-400 text-xs">暂无该状态理财</div>`;
         return;
       }
 
       listEl.innerHTML = filtered.map(p => {
         const isNav = p.type === 'nav';
         const sym = p.currency === 'USD' ? '$' : '¥';
+        const isLatest = !latestDate || p.nav_date === latestDate;
+        const shortDate = p.nav_date ? p.nav_date.slice(5) : '';
         const navDateTag = p.nav_date ? `<span class="text-[11px] text-slate-400 ml-1">(${p.nav_date})</span>` : '';
-        const liveBadge = p.sync_status === 'live' ? `<span class="inline-block ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">官网实时</span>` : '';
-        const metricLabel = isNav ? `最新净值: ${p.current_nav ? Number(p.current_nav).toFixed(4) : '1.0000'}${navDateTag}${liveBadge}` : `万份收益: ${p.ten_k_return || '0.00'}元${navDateTag}${liveBadge}`;
+        const statusBadge = isLatest
+          ? `<span class="inline-block ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">已更新</span>`
+          : `<span class="inline-block ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">待披露</span>`;
+        const metricLabel = isNav ? `最新净值: ${p.current_nav ? Number(p.current_nav).toFixed(4) : '1.0000'}${navDateTag}${statusBadge}` : `万份收益: ${p.ten_k_return || '0.00'}元${navDateTag}${statusBadge}`;
         const itemYield = p.principal > 0 ? (p.cumulative_profit / p.principal * 100).toFixed(2) : '0.00';
 
+        const dailyLabel = isLatest ? `最新收益${shortDate ? ` (${shortDate})` : ''}` : `上期收益 (${shortDate || '旧'})`;
+        const dailyValueHtml = isLatest
+          ? `<div class="font-bold mt-0.5 ${p.daily_profit >= 0 ? 'profit-red' : 'profit-green'}">${formatSign(p.daily_profit || 0)}</div>`
+          : `<div class="font-medium mt-0.5 text-slate-400">${formatSign(p.daily_profit || 0)}<span class="text-[10px] block font-normal text-amber-600/80">未计入本日</span></div>`;
+
         return `
-          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-[0_2px_6px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border ${isLatest ? 'border-slate-200/80' : 'border-amber-200/60 bg-amber-50/10'} shadow-[0_2px_6px_rgba(0,0,0,0.03)] flex flex-col justify-between">
             <div>
               <div class="flex items-center justify-between gap-2">
                 ${getBankBadge(p.bank)}
@@ -402,10 +448,8 @@
                 <div class="font-bold text-slate-900 mt-0.5">${sym}${formatMoney(p.market_value || p.shares)}</div>
               </div>
               <div>
-                <div class="text-slate-400 text-[11px]">今日收益</div>
-                <div class="font-bold mt-0.5 ${p.daily_profit >= 0 ? 'profit-red' : 'profit-green'}">
-                  ${formatSign(p.daily_profit || 0)}
-                </div>
+                <div class="text-slate-400 text-[11px]">${dailyLabel}</div>
+                ${dailyValueHtml}
               </div>
               <div>
                 <div class="text-slate-400 text-[11px]">累计总收益</div>
