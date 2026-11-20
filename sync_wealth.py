@@ -157,6 +157,12 @@ def match_holding(item, holding):
     if not i_norm:
         return False
 
+    # 如果指定了份额后缀（如 A / B / D / G），校验产品代码或名称结尾
+    share_cls = (holding.get("share_class") or "").strip().upper()
+    if share_cls:
+        if not (i_code.endswith(share_cls) or i_norm.endswith(share_cls)):
+            return False
+
     # 排除关键字（防止 30天持有期A 误匹配 30天持有期1号A）
     for ex in holding.get("exclude_keywords") or []:
         if normalize_name(ex) in i_norm:
@@ -276,7 +282,7 @@ def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pa
 
 def fetch_all_boc_agency_navs(holdings, old_map=None):
     """
-    先扫中国银行代销理财净值(srfd6_2024)，未命中的再扫中银理财净值专区(bocwm/fp82)
+    扫描中国银行代销理财净值公示表(srfd6_2024)，覆盖全部理财子公司产品
     """
     matched = {}
     old_map = old_map or {}
@@ -284,12 +290,6 @@ def fetch_all_boc_agency_navs(holdings, old_map=None):
     session.headers.update(HEADERS)
 
     scan_boc_source(session, BOC_AGENCY_BASE, "代销净值", holdings, matched, old_map, max_pages_cap=220)
-
-    if len(matched) < len(holdings):
-        unmatched_names = [h["name"] for h in holdings if h["id"] not in matched]
-        log(f"尚有 {len(unmatched_names)} 只未命中，继续探查中银理财净值专区...")
-        scan_boc_source(session, BOC_WM_BASE, "中银理财", holdings, matched, old_map, max_pages_cap=60)
-
     return matched
 
 
