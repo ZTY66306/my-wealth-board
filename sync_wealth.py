@@ -179,50 +179,52 @@ def match_holding(item, holding):
     return False
 
 
-def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pages_cap=250):
+def should_build_catalog(catalog_path="catalog.json"):
+    if not os.path.exists(catalog_path):
+        return True
+    try:
+        age_sec = time.time() - os.path.getmtime(catalog_path)
+        return age_sec > 3 * 86400
+    except Exception:
+        return True
+
+
+def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pages_cap=250, collect_catalog=False):
     """
     通用扫描器：温和限流 + 页码记忆优先 + 失败重试，扫描中国银行分页净值表
+    当 collect_catalog=True 时，顺便收集全量产品目录生成 catalog.json 供前端模糊搜索
     """
+    catalog_map = {}
     first_url = base_url + "index.html"
     try:
         r0 = session.get(first_url, timeout=15)
         r0.encoding = "utf-8"
         log(f"[{label}] GET {first_url} -> {r0.status_code} (len={len(r0.text)})")
         if r0.status_code != 200:
-            return
+            return catalog_map
     except Exception as e:
         log(f"[{label}] 首页请求失败: {e}")
-        return
+        return catalog_map
 
     headers, first_items = parse_boc_page_rows(r0.text)
     total_pages = detect_total_pages(r0.text)
-    log(f"[{label}] 表头: {headers} | 第1页={len(first_items)}条 | 总页数={total_pages}")
-
-    # 如果首页不是直接表格而是子链接（如 bocwm/fp82 可能是公告列表），打印前3个链接帮助诊断
-    if not first_items:
-        soup = BeautifulSoup(r0.text, "html.parser")
-        sample_links = [(a.get_text(strip=True)[:30], a["href"]) for a in soup.find_all("a", href=True) if "净值" in a.get_text() or "sourcedb" in a["href"]][:5]
-        if sample_links:
-            log(f"[{label}] 发现子链接: {sample_links}")
-
-    debug_samples = []
-    probe_words = ["稳富纯债", "ESG优享", "时间朋友", "安盈象", "打新策略", "信用精选"]
+    log(f"[{label}] 表头: {headers} | 第1页={len(first_items)}条 | 总页数={total_pages} | 生成目录={collect_catalog}")
 
     def check_items(page_idx, items):
         for item in items:
-            iname = item.get("name", "")
-            if len(debug_samples) < 8 and any(w in iname for w in probe_words):
-                if not any(item["code"] == s["code"] for s in debug_samples):
-                    debug_samples.append({"page": page_idx + 1, "code": item["code"], "name": iname, "nav": item["unit_nav"]})
+            code = (item.get("code") or "").strip()
+            iname = (item.get("name") or "").strip()
+            if collect_catalog and code and iname and code not in catalog_map:
+                catalog_map[code] = [code, iname, round(float(item["unit_nav"]), 4), item.get("nav_date", "")]
             for h in holdings:
                 if h["id"] not in matched and match_holding(item, h):
                     item["found_page"] = page_idx
                     matched[h["id"]] = item
-                    log(f"  [{label} 第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+                    log(f"  [{label} 第{page_idx + 1}页命中] {h['name']} -> 代码={code} 净值={item['unit_nav']} 日期={item['nav_date']}")
 
     check_items(0, first_items)
-    if len(matched) == len(holdings) or total_pages <= 1:
-        return
+    if (not collect_catalog and len(matched) == len(holdings)) or total_pages <= 1:
+        return catalog_map
 
     max_pages = min(total_pages, max_pages_cap)
 
@@ -246,7 +248,7 @@ def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pa
     def fetch_page(page_idx):
         url = f"{base_url}index_{page_idx}.html"
         for attempt in range(1, 3):
-            time.sleep(random.uniform(0.12, 0.28))
+            time.sleep(random.uniform(0.12, 0.25))
             try:
                 resp = session.get(url, timeout=12)
                 resp.encoding = "utf-8"
@@ -264,7 +266,7 @@ def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pa
     fetched_count = 1
     with ThreadPoolExecutor(max_workers=4) as pool:
         for i in range(0, len(scan_order), batch_size):
-            if len(matched) == len(holdings):
+            if not collect_catalog and len(matched) == len(holdings):
                 break
             batch = scan_order[i:i + batch_size]
             futures = [pool.submit(fetch_page, idx) for idx in batch]
@@ -272,12 +274,17 @@ def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pa
                 page_idx, items = fut.result()
                 fetched_count += 1
                 check_items(page_idx, items)
-            if len(matched) == len(holdings):
+            if not collect_catalog and len(matched) == len(holdings):
                 log(f"[{label}] 全部持仓已命中（本次仅请求 {fetched_count} 页），立即停止！")
                 break
 
-    if len(matched) < len(holdings) and debug_samples:
-        log(f"[{label}] 命名样例参考: {debug_samples}")
+    if collect_catalog and catalog_map:
+        catalog_list = list(catalog_map.values())
+        with open("catalog.json", "w", encoding="utf-8") as cf:
+            json.dump({"updated_at": TODAY_STR, "items": catalog_list}, cf, ensure_ascii=False, separators=(",", ":"))
+        log(f"[{label}] 已生成全量产品搜索库 catalog.json，共收录 {len(catalog_list)} 只产品！")
+
+    return catalog_map
 
 
 def fetch_all_boc_agency_navs(holdings, old_map=None):
@@ -289,7 +296,8 @@ def fetch_all_boc_agency_navs(holdings, old_map=None):
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    scan_boc_source(session, BOC_AGENCY_BASE, "代销净值", holdings, matched, old_map, max_pages_cap=220)
+    build_cat = should_build_catalog("catalog.json")
+    scan_boc_source(session, BOC_AGENCY_BASE, "代销净值", holdings, matched, old_map, max_pages_cap=220, collect_catalog=build_cat)
     return matched
 
 

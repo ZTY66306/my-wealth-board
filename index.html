@@ -132,42 +132,33 @@
         <button onclick="closeModal('addModal')" class="text-slate-400 hover:text-slate-600 p-1">✕</button>
       </div>
 
-      <!-- 快速点击热门预设 -->
+      <!-- 模糊搜索理财产品（覆盖官网近万只产品） -->
       <div class="mb-4">
-        <label class="block text-xs font-semibold text-slate-600 mb-1.5">快捷点击选择招行 / 中行热门产品：</label>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs">
-          <button onclick="quickPick('招商银行', '招银理财-朝朝宝', 'Z7001621000001', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-red-600">招行</span> 朝朝宝 (活钱)
-          </button>
-          <button onclick="quickPick('中国银行', '中银理财-活钱宝', 'Z7001021000012', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-rose-800">中行</span> 活钱宝 (活钱)
-          </button>
-          <button onclick="quickPick('招商银行', '招银理财-招睿青葵', 'Z7001620000028', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-red-600">招行</span> 招睿青葵 (净值)
-          </button>
-          <button onclick="quickPick('中国银行', '中银理财-稳富固收增强', 'Z7001024000001', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-rose-800">中行</span> 稳富固收 (净值)
-          </button>
-          <button onclick="quickPick('招商银行', '招银理财-招睿日开月滚', 'Z7001622000105', 'nav')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-red-600">招行</span> 日开月滚 (净值)
-          </button>
-          <button onclick="quickPick('中国银行', '中银理财-乐享天天', 'Z7001020000089', 'ten_thousand')" class="text-left p-2 border border-slate-200 rounded-lg hover:border-rose-400 hover:bg-rose-50/50">
-            <span class="font-bold text-rose-800">中行</span> 乐享天天 (活钱)
-          </button>
+        <div class="flex items-center justify-between mb-1.5">
+          <label class="block text-xs font-semibold text-slate-700">🔍 按名称或代码模糊搜索（支持多关键词空格分隔）：</label>
+          <span id="catalogStatus" class="text-[11px] text-slate-400">加载产品库...</span>
         </div>
+        <div class="relative">
+          <input id="catalogSearch" oninput="onCatalogSearch()" type="text" placeholder="例如：招睿 30天 / 稳富纯债 / 阳光金 / 120030..." class="w-full px-3.5 py-2 border border-rose-200 bg-rose-50/30 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500" />
+        </div>
+        <div id="catalogResults" class="hidden mt-1.5 max-h-44 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-sm text-xs"></div>
       </div>
 
       <!-- 表单输入 -->
       <div class="space-y-3 border-t border-slate-100 pt-3 text-xs">
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-500 mb-1">所属银行</label>
+            <label class="block text-slate-500 mb-1">所属机构</label>
             <select id="fBank" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white">
-              <option value="招商银行">招商银行</option>
-              <option value="中国银行">中国银行</option>
-              <option value="工商银行">工商银行</option>
-              <option value="建设银行">建设银行</option>
-              <option value="其他银行">其他银行</option>
+              <option value="招银理财">招银理财</option>
+              <option value="中银理财">中银理财</option>
+              <option value="交银理财">交银理财</option>
+              <option value="光大理财">光大理财</option>
+              <option value="浦银理财">浦银理财</option>
+              <option value="信银理财">信银理财</option>
+              <option value="汇华理财">汇华理财</option>
+              <option value="中邮理财">中邮理财</option>
+              <option value="其他机构">其他机构</option>
             </select>
           </div>
           <div>
@@ -181,22 +172,28 @@
 
         <div>
           <label class="block text-slate-500 mb-1">产品名称</label>
-          <input id="fName" type="text" placeholder="例如：招银理财-朝朝宝" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
-        </div>
-
-        <div>
-          <label class="block text-slate-500 mb-1">产品登记编码 (Z7开头14位，可在银行App查看)</label>
-          <input id="fCode" type="text" placeholder="例如：Z7001621000001" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg uppercase" />
+          <input id="fName" type="text" placeholder="搜索后自动填充，也可手动输入" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-500 mb-1">持有金额/份额 (元/份)</label>
-            <input id="fShares" type="number" step="0.01" placeholder="50000" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+            <label class="block text-slate-500 mb-1">产品代码</label>
+            <input id="fCode" type="text" placeholder="搜索后自动填充" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg uppercase font-mono" />
           </div>
           <div>
+            <label class="block text-slate-500 mb-1">参考最新净值</label>
+            <input id="fNav" type="number" step="0.0001" value="1.0000" oninput="autoCalcShares()" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg font-mono bg-slate-50" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
             <label class="block text-slate-500 mb-1">买入本金 (元)</label>
-            <input id="fPrincipal" type="number" step="0.01" placeholder="50000" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+            <input id="fPrincipal" type="number" step="0.01" placeholder="例如：20000" oninput="autoCalcShares()" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-1">持有份额 (自动换算，可微调)</label>
+            <input id="fShares" type="number" step="0.01" placeholder="输入本金后自动计算" class="w-full px-3 py-1.5 border border-slate-200 rounded-lg" />
           </div>
         </div>
       </div>
@@ -459,15 +456,105 @@
       });
     }
 
-    function quickPick(bank, name, code, type) {
-      document.getElementById('fBank').value = bank;
+    let catalogItems = null;
+    let selectedNavDate = '';
+
+    async function loadCatalog() {
+      const statusEl = document.getElementById('catalogStatus');
+      if (catalogItems !== null) {
+        statusEl.textContent = `已加载 ${catalogItems.length} 只产品`;
+        return;
+      }
+      statusEl.textContent = '加载官网产品库中...';
+      try {
+        const res = await fetch(`./catalog.json?t=${Math.floor(Date.now() / 3600000)}`);
+        if (!res.ok) throw new Error('尚未生成');
+        const json = await res.json();
+        catalogItems = json.items || [];
+        statusEl.textContent = `已接入 ${catalogItems.length} 只官网产品`;
+      } catch (e) {
+        catalogItems = [];
+        statusEl.textContent = '产品库同步中，可先手动填写';
+      }
+    }
+
+    function inferBank(name) {
+      if (name.includes('招银') || name.includes('招睿') || name.includes('朝朝宝')) return '招银理财';
+      if (name.includes('中银') || name.includes('稳富') || name.includes('ESG优享')) return '中银理财';
+      if (name.includes('交银') || name.includes('稳享')) return '交银理财';
+      if (name.includes('光大') || name.includes('阳光金')) return '光大理财';
+      if (name.includes('浦银') || name.includes('双周鑫')) return '浦银理财';
+      if (name.includes('信银') || name.includes('安盈象')) return '信银理财';
+      if (name.includes('汇华') || name.includes('时间朋友')) return '汇华理财';
+      if (name.includes('中邮') || name.includes('惠农')) return '中邮理财';
+      return '其他机构';
+    }
+
+    function onCatalogSearch() {
+      const q = document.getElementById('catalogSearch').value.trim().toLowerCase();
+      const box = document.getElementById('catalogResults');
+      if (!q || !catalogItems || catalogItems.length === 0) {
+        box.classList.add('hidden');
+        return;
+      }
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const hits = [];
+      for (let i = 0; i < catalogItems.length; i++) {
+        const [code, name, nav, dt] = catalogItems[i];
+        const hay = (code + ' ' + name).toLowerCase();
+        if (tokens.every(t => hay.includes(t))) {
+          hits.push(catalogItems[i]);
+          if (hits.length >= 20) break;
+        }
+      }
+      box.classList.remove('hidden');
+      if (hits.length === 0) {
+        box.innerHTML = `<div class="p-3 text-center text-slate-400">未匹配到产品，可尝试缩短关键词或在下方手动填写</div>`;
+        return;
+      }
+      box.innerHTML = hits.map((item, idx) => {
+        const [code, name, nav, dt] = item;
+        return `
+          <div onclick='pickCatalogItem(${JSON.stringify(code)}, ${JSON.stringify(name)}, ${nav}, ${JSON.stringify(dt)})' class="p-2.5 hover:bg-rose-50 cursor-pointer transition flex items-center justify-between gap-2">
+            <div class="min-w-0">
+              <div class="font-semibold text-slate-800 truncate">${name}</div>
+              <div class="text-[11px] text-slate-400 font-mono mt-0.5">${code} · ${dt || ''}</div>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-xs font-bold text-rose-600">${Number(nav).toFixed(4)}</div>
+              <div class="text-[10px] text-slate-400">单位净值</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function pickCatalogItem(code, name, nav, dt) {
+      document.getElementById('fBank').value = inferBank(name);
       document.getElementById('fName').value = name;
       document.getElementById('fCode').value = code;
-      document.getElementById('fType').value = type;
+      document.getElementById('fNav').value = Number(nav).toFixed(4);
+      document.getElementById('fType').value = 'nav';
+      selectedNavDate = dt || '';
+      document.getElementById('catalogResults').classList.add('hidden');
+      document.getElementById('catalogSearch').value = '';
+      autoCalcShares();
+      showToast(`已选中：${name} (净值 ${Number(nav).toFixed(4)})`);
+    }
+
+    function autoCalcShares() {
+      const principal = parseFloat(document.getElementById('fPrincipal').value);
+      const nav = parseFloat(document.getElementById('fNav').value) || 1.0;
+      if (!isNaN(principal) && principal > 0 && nav > 0) {
+        document.getElementById('fShares').value = (principal / nav).toFixed(2);
+      }
     }
 
     function openAddModal() {
       document.getElementById('addModal').classList.remove('hidden');
+      document.getElementById('catalogSearch').value = '';
+      document.getElementById('catalogResults').classList.add('hidden');
+      loadCatalog();
     }
 
     function closeModal(id) {
@@ -493,22 +580,25 @@
       const type = document.getElementById('fType').value;
       const name = document.getElementById('fName').value.trim();
       const code = document.getElementById('fCode').value.trim().toUpperCase();
+      const nav = parseFloat(document.getElementById('fNav').value) || 1.0;
       const shares = parseFloat(document.getElementById('fShares').value);
       const principal = parseFloat(document.getElementById('fPrincipal').value);
 
       if (!name || !code || isNaN(shares) || isNaN(principal)) {
-        return alert('请完整填写名称、登记编码、份额和本金！');
+        return alert('请先搜索或填写产品名称、代码和买入本金！');
       }
 
-      // 保存到本地追加列表，立即可见
+      const mv = Number((shares * nav).toFixed(2));
       const localItems = JSON.parse(localStorage.getItem('my_extra_holdings') || '[]');
       localItems.push({
         id: `extra_${Date.now()}`,
         bank, name, code, type, shares, principal,
-        market_value: shares,
+        market_value: mv,
         daily_profit: 0.0,
-        cumulative_profit: 0.0,
-        current_nav: 1.0,
+        cumulative_profit: Number((mv - principal).toFixed(2)),
+        current_nav: nav,
+        nav_date: selectedNavDate,
+        sync_status: selectedNavDate ? 'live' : 'cached',
         ten_k_return: 0.0
       });
       localStorage.setItem('my_extra_holdings', JSON.stringify(localItems));
