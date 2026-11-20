@@ -27,6 +27,7 @@ TODAY_STR = NOW.strftime("%Y-%m-%d")
 TIME_STR = NOW.strftime("%Y-%m-%d %H:%M:%S")
 
 BOC_AGENCY_BASE = "https://www.bankofchina.com/sourcedb/srfd6_2024/"
+BOC_WM_BASE = "https://www.bankofchina.com/fimarkets/bocwm/fp82/"
 
 HEADERS = {
     "User-Agent": (
@@ -172,47 +173,58 @@ def match_holding(item, holding):
     return False
 
 
-def fetch_all_boc_agency_navs(holdings, old_map=None):
+def scan_boc_source(session, base_url, label, holdings, matched, old_map, max_pages_cap=250):
     """
-    温和限流 + 页码记忆优先 + 失败重试：抓取中国银行代销理财产品净值公示页
+    通用扫描器：温和限流 + 页码记忆优先 + 失败重试，扫描中国银行分页净值表
     """
-    matched = {}
-    old_map = old_map or {}
-    session = requests.Session()
-    session.headers.update(HEADERS)
-
-    first_url = BOC_AGENCY_BASE + "index.html"
+    first_url = base_url + "index.html"
     try:
         r0 = session.get(first_url, timeout=15)
         r0.encoding = "utf-8"
-        log(f"GET {first_url} -> {r0.status_code} (len={len(r0.text)})")
+        log(f"[{label}] GET {first_url} -> {r0.status_code} (len={len(r0.text)})")
         if r0.status_code != 200:
-            return matched
+            return
     except Exception as e:
-        log(f"首页请求失败: {e}")
-        return matched
+        log(f"[{label}] 首页请求失败: {e}")
+        return
 
     headers, first_items = parse_boc_page_rows(r0.text)
     total_pages = detect_total_pages(r0.text)
-    log(f"表头: {headers}")
-    log(f"第1页解析到 {len(first_items)} 条记录，识别总页数={total_pages}")
+    log(f"[{label}] 表头: {headers} | 第1页={len(first_items)}条 | 总页数={total_pages}")
 
-    for item in first_items:
-        for h in holdings:
-            if h["id"] not in matched and match_holding(item, h):
-                item["found_page"] = 0
-                matched[h["id"]] = item
-                log(f"  [第1页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+    # 如果首页不是直接表格而是子链接（如 bocwm/fp82 可能是公告列表），打印前3个链接帮助诊断
+    if not first_items:
+        soup = BeautifulSoup(r0.text, "html.parser")
+        sample_links = [(a.get_text(strip=True)[:30], a["href"]) for a in soup.find_all("a", href=True) if "净值" in a.get_text() or "sourcedb" in a["href"]][:5]
+        if sample_links:
+            log(f"[{label}] 发现子链接: {sample_links}")
 
+    debug_samples = []
+    probe_words = ["稳富纯债", "ESG优享", "时间朋友", "安盈象", "打新策略", "信用精选"]
+
+    def check_items(page_idx, items):
+        for item in items:
+            iname = item.get("name", "")
+            if len(debug_samples) < 8 and any(w in iname for w in probe_words):
+                if not any(item["code"] == s["code"] for s in debug_samples):
+                    debug_samples.append({"page": page_idx + 1, "code": item["code"], "name": iname, "nav": item["unit_nav"]})
+            for h in holdings:
+                if h["id"] not in matched and match_holding(item, h):
+                    item["found_page"] = page_idx
+                    matched[h["id"]] = item
+                    log(f"  [{label} 第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+
+    check_items(0, first_items)
     if len(matched) == len(holdings) or total_pages <= 1:
-        return matched
+        return
 
-    max_pages = min(total_pages, 300)
+    max_pages = min(total_pages, max_pages_cap)
 
-    # 优先扫描上次命中的页码及其前后 ±2 页，大幅减少总请求数
     priority_pages = []
     seen = {0}
     for h in holdings:
+        if h["id"] in matched:
+            continue
         last_p = old_map.get(h["id"], {}).get("last_page")
         if isinstance(last_p, int) and 1 <= last_p < max_pages:
             for delta in (0, -1, 1, -2, 2):
@@ -223,12 +235,12 @@ def fetch_all_boc_agency_navs(holdings, old_map=None):
 
     remaining_pages = [p for p in range(1, max_pages) if p not in seen]
     scan_order = priority_pages + remaining_pages
-    log(f"防限流温和模式(4线程+随机间隔+重试)：优先页={len(priority_pages)}页，总待扫={len(scan_order)}页")
+    log(f"[{label}] 防限流模式(4线程+随机间隔)：优先={len(priority_pages)}页，总待扫={len(scan_order)}页")
 
     def fetch_page(page_idx):
-        url = f"{BOC_AGENCY_BASE}index_{page_idx}.html"
+        url = f"{base_url}index_{page_idx}.html"
         for attempt in range(1, 3):
-            time.sleep(random.uniform(0.15, 0.35))
+            time.sleep(random.uniform(0.12, 0.28))
             try:
                 resp = session.get(url, timeout=12)
                 resp.encoding = "utf-8"
@@ -253,15 +265,30 @@ def fetch_all_boc_agency_navs(holdings, old_map=None):
             for fut in as_completed(futures):
                 page_idx, items = fut.result()
                 fetched_count += 1
-                for item in items:
-                    for h in holdings:
-                        if h["id"] not in matched and match_holding(item, h):
-                            item["found_page"] = page_idx
-                            matched[h["id"]] = item
-                            log(f"  [第{page_idx + 1}页命中] {h['name']} -> 代码={item['code']} 净值={item['unit_nav']} 日期={item['nav_date']}")
+                check_items(page_idx, items)
             if len(matched) == len(holdings):
-                log(f"全部持仓已命中（本次仅请求 {fetched_count} 页），立即停止扫描！")
+                log(f"[{label}] 全部持仓已命中（本次仅请求 {fetched_count} 页），立即停止！")
                 break
+
+    if len(matched) < len(holdings) and debug_samples:
+        log(f"[{label}] 命名样例参考: {debug_samples}")
+
+
+def fetch_all_boc_agency_navs(holdings, old_map=None):
+    """
+    先扫中国银行代销理财净值(srfd6_2024)，未命中的再扫中银理财净值专区(bocwm/fp82)
+    """
+    matched = {}
+    old_map = old_map or {}
+    session = requests.Session()
+    session.headers.update(HEADERS)
+
+    scan_boc_source(session, BOC_AGENCY_BASE, "代销净值", holdings, matched, old_map, max_pages_cap=220)
+
+    if len(matched) < len(holdings):
+        unmatched_names = [h["name"] for h in holdings if h["id"] not in matched]
+        log(f"尚有 {len(unmatched_names)} 只未命中，继续探查中银理财净值专区...")
+        scan_boc_source(session, BOC_WM_BASE, "中银理财", holdings, matched, old_map, max_pages_cap=60)
 
     return matched
 

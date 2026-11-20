@@ -106,7 +106,7 @@
     "bank": "信银理财",
     "name": "安盈象固收稳利七天持有期255号G",
     "code": "",
-    "match_keywords": ["安盈象", "255号G"],
+    "match_keywords": ["安盈象", "255号"],
     "type": "nav",
     "principal": 20000.0,
     "ref_mv": 20017.83,
