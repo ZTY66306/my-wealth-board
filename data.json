@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-11-20 11:43:16",
+  "updated_at": "2026-11-20 11:46:11",
   "summary": {
-    "total_assets": 564220.62,
+    "total_assets": 565370.46,
     "daily_profit": 74.8,
-    "cumulative_profit": 4282.9
+    "cumulative_profit": 5432.74
   },
   "products": [
     {
@@ -208,26 +208,26 @@
       "id": "citic_ayx_255g",
       "bank": "信银理财",
       "name": "安盈象固收稳利七天持有期255号G",
-      "code": "",
+      "code": "AF264586G",
       "match_keywords": [
         "安盈象",
-        "255号G"
+        "255号"
       ],
       "type": "nav",
       "principal": 20000.0,
       "ref_mv": 20017.83,
       "ref_daily": 1.98,
-      "shares": 20017.83,
+      "shares": 19813.75,
       "currency": "CNY",
       "market_value": 20017.83,
       "daily_profit": 1.98,
       "cumulative_profit": 17.83,
-      "current_nav": 1.0,
-      "yesterday_nav": 1.0,
-      "nav_date": "2026-11-20",
-      "sync_status": "unchanged",
+      "current_nav": 1.0103,
+      "yesterday_nav": 1.0103,
+      "nav_date": "2026-11-18",
+      "sync_status": "live",
       "last_sync_date": "2026-11-20",
-      "last_page": null
+      "last_page": 16
     },
     {
       "id": "bocwm_esg_30d_3a",
@@ -625,7 +625,7 @@
       "id": "bocwm_usd_daily",
       "bank": "中银理财",
       "name": "[美元/汇]全球配置高评级美元日日开-汇",
-      "code": "QQGPJUSDRKJGA",
+      "code": "QQGPJUSDRKB",
       "match_keywords": [
         "全球配置高评级美元日日开"
       ],
@@ -635,15 +635,15 @@
       "ref_mv": 1459.47,
       "ref_daily": 0.14,
       "shares": 1449.18,
-      "market_value": 1459.47,
+      "market_value": 1619.17,
       "daily_profit": 0.14,
-      "cumulative_profit": 79.23,
-      "current_nav": 1.0071,
+      "cumulative_profit": 238.93,
+      "current_nav": 1.1173,
       "yesterday_nav": 1.0071,
       "nav_date": "2026-11-18",
       "sync_status": "live",
       "last_sync_date": "2026-11-20",
-      "last_page": 17
+      "last_page": 18
     },
     {
       "id": "bocwm_wfcz_daily_1a",
@@ -697,9 +697,9 @@
     },
     {
       "date": "2026-11-20",
-      "total_assets": 564220.62,
+      "total_assets": 565370.46,
       "daily_profit": 74.8,
-      "cumulative_profit": 4282.9
+      "cumulative_profit": 5432.74
     }
   ]
 }
