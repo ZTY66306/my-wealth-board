@@ -254,7 +254,7 @@
       return formatMoney(num);
     }
 
-        function getBankBadge(bank) {
+    function getBankBadge(bank) {
       if (bank.includes("招商") || bank.includes("招银")) {
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">招银理财</span>`;
       }
@@ -264,14 +264,20 @@
       if (bank.includes("中邮") || bank.includes("邮储")) {
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">中邮理财</span>`;
       }
+      if (bank.includes("交银") || bank.includes("交通")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">交银理财</span>`;
+      }
+      if (bank.includes("信银") || bank.includes("中信")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200">信银理财</span>`;
+      }
+      if (bank.includes("光大")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">光大理财</span>`;
+      }
+      if (bank.includes("汇华")) {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-cyan-50 text-cyan-800 border border-cyan-200">汇华理财</span>`;
+      }
       if (bank.includes("中国") || bank.includes("中银")) {
         return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">中银理财</span>`;
-      }
-      if (bank.includes("工银") || bank.includes("工商")) {
-        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-50 text-red-800 border border-red-200">工银理财</span>`;
-      }
-      if (bank.includes("建信") || bank.includes("建设")) {
-        return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">建信理财</span>`;
       }
       return `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700">${bank}</span>`;
     }
@@ -293,12 +299,14 @@
           data.products = [...data.products, ...localItems];
         }
 
-        // 重新核算总资产和收益
+        // 重新核算总资产和收益（美元产品按 7.20 折算人民币计入总汇总）
+        const USD_CNY = 7.20;
         let sumAssets = 0, sumDaily = 0, sumCum = 0;
         data.products.forEach(p => {
-          sumAssets += (p.market_value || p.shares || 0);
-          sumDaily += (p.daily_profit || 0);
-          sumCum += (p.cumulative_profit || 0);
+          const fx = p.currency === 'USD' ? USD_CNY : 1;
+          sumAssets += (p.market_value || p.shares || 0) * fx;
+          sumDaily += (p.daily_profit || 0) * fx;
+          sumCum += (p.cumulative_profit || 0) * fx;
         });
         data.summary.total_assets = sumAssets;
         data.summary.daily_profit = sumDaily;
@@ -323,7 +331,7 @@
 
       document.getElementById('totalAssets').textContent = `¥ ${formatMoney(summary.total_assets)}`;
       
-      const totalPrincipal = allProducts.reduce((sum, p) => sum + (p.principal || 0), 0);
+      const totalPrincipal = allProducts.reduce((sum, p) => sum + (p.principal || 0) * (p.currency === 'USD' ? 7.20 : 1), 0);
       document.getElementById('totalPrincipal').textContent = `¥ ${formatMoney(totalPrincipal)}`;
 
       const dpEl = document.getElementById('dailyProfit');
@@ -367,6 +375,7 @@
 
       listEl.innerHTML = filtered.map(p => {
         const isNav = p.type === 'nav';
+        const sym = p.currency === 'USD' ? '$' : '¥';
         const navDateTag = p.nav_date ? `<span class="text-[11px] text-slate-400 ml-1">(${p.nav_date})</span>` : '';
         const liveBadge = p.sync_status === 'live' ? `<span class="inline-block ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">官网实时</span>` : '';
         const metricLabel = isNav ? `最新净值: ${p.current_nav ? Number(p.current_nav).toFixed(4) : '1.0000'}${navDateTag}${liveBadge}` : `万份收益: ${p.ten_k_return || '0.00'}元${navDateTag}${liveBadge}`;
@@ -393,7 +402,7 @@
             <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100 text-xs">
               <div>
                 <div class="text-slate-400 text-[11px]">当前市值</div>
-                <div class="font-bold text-slate-900 mt-0.5">¥${formatMoney(p.market_value || p.shares)}</div>
+                <div class="font-bold text-slate-900 mt-0.5">${sym}${formatMoney(p.market_value || p.shares)}</div>
               </div>
               <div>
                 <div class="text-slate-400 text-[11px]">今日收益</div>

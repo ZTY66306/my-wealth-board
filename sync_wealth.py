@@ -151,8 +151,22 @@ def match_holding(item, holding):
     if h_code and i_code and re.match(r"^[A-Z0-9]+$", h_code):
         if h_code == i_code:
             return True
-    h_norm = normalize_name(holding.get("name", ""))
+
     i_norm = normalize_name(item.get("name", ""))
+    if not i_norm:
+        return False
+
+    # 排除关键字（防止 30天持有期A 误匹配 30天持有期1号A）
+    for ex in holding.get("exclude_keywords") or []:
+        if normalize_name(ex) in i_norm:
+            return False
+
+    # 优先用显式配置的关键字列表（全部命中才算匹配）
+    kws = holding.get("match_keywords")
+    if kws:
+        return all(normalize_name(k) in i_norm for k in kws)
+
+    h_norm = normalize_name(holding.get("name", ""))
     if len(h_norm) >= 6 and h_norm in i_norm:
         return True
     return False
@@ -317,12 +331,22 @@ def main():
     total_daily = 0.0
     total_cum = 0.0
 
+    USD_CNY = 7.20
+
     for h in holdings:
         pid = h["id"]
         old_p = old_map.get(pid, {})
-        shares = float(h.get("shares") or 0.0)
         principal = float(h.get("principal") or 0.0)
+        ref_mv = float(h.get("ref_mv") or principal)
+        ref_daily = float(h.get("ref_daily") or 0.0)
+        currency = h.get("currency", "CNY")
+        fx = USD_CNY if currency == "USD" else 1.0
         live = live_map.get(pid)
+
+        # 确定份额：优先使用 holdings 显式份额，其次沿用上次自动校准过的份额
+        shares = float(h.get("shares") or 0.0)
+        if shares <= 0 and old_p.get("shares", 0) > 0 and old_p.get("sync_status") == "live":
+            shares = float(old_p["shares"])
 
         if live is not None:
             cur_nav = round(float(live["unit_nav"]), 4)
@@ -331,6 +355,11 @@ def main():
             old_nav = old_p.get("current_nav")
             old_date = old_p.get("nav_date")
             old_status = old_p.get("sync_status")
+
+            # 首次命中真实净值且尚未校准份额时：用 精确参考市值 ÷ 官网实时净值 反算份额
+            if shares <= 0 and cur_nav > 0:
+                shares = round(ref_mv / cur_nav, 2)
+                log(f"  [自动校准份额] {h['name']}: ref_mv={ref_mv} / nav={cur_nav} -> shares={shares}")
 
             mv = round(shares * cur_nav, 2)
             cp = round(mv - principal, 2)
@@ -342,30 +371,34 @@ def main():
             elif old_status == "live" and old_nav is not None and nav_date == old_date:
                 # 同一净值日期，保留已算出的当期日收益，不重复加
                 yest_nav = old_p.get("yesterday_nav", cur_nav)
-                dp = old_p.get("daily_profit", 0.0)
+                dp = old_p.get("daily_profit", ref_daily)
             else:
-                # 首次接入真实净值：若官网提供了日净值增长率则直接换算，否则保留上期记录作为初始展示
+                # 首次接入真实净值：若官网有日增长率则换算，否则保留截图基准日收益
                 yest_nav = cur_nav
-                if live.get("daily_growth") is not None:
+                if live.get("daily_growth") is not None and ref_daily == 0.0:
                     dp = round(mv * (live["daily_growth"] / 100.0), 2)
                 else:
-                    dp = old_p.get("daily_profit", 0.0)
+                    dp = ref_daily
 
             status = "live"
         else:
-            # 未命中时不造假，如实保留上期记录
+            # 未命中时不造假，如实保留参考市值或上期记录
             cur_nav = old_p.get("current_nav", 1.0)
             yest_nav = old_p.get("yesterday_nav", cur_nav)
             nav_date = old_p.get("nav_date", TODAY_STR)
-            real_code = h.get("code")
-            mv = old_p.get("market_value", round(shares * cur_nav, 2))
-            dp = old_p.get("daily_profit", 0.0)
+            real_code = h.get("code") or old_p.get("code", "")
+            mv = old_p.get("market_value", ref_mv)
+            if shares <= 0 and cur_nav > 0:
+                shares = round(mv / cur_nav, 2)
+            dp = old_p.get("daily_profit", ref_daily)
             cp = round(mv - principal, 2)
             status = "unchanged"
 
         rec = {
             **h,
             "code": real_code,
+            "shares": shares,
+            "currency": currency,
             "market_value": mv,
             "daily_profit": dp,
             "cumulative_profit": cp,
@@ -377,9 +410,9 @@ def main():
             "last_page": live.get("found_page") if live is not None else old_p.get("last_page"),
         }
 
-        total_assets += mv
-        total_daily += dp
-        total_cum += cp
+        total_assets += mv * fx
+        total_daily += dp * fx
+        total_cum += cp * fx
         updated_products.append(rec)
 
     history = [x for x in old_data.get("history", []) if x.get("date") != TODAY_STR]
